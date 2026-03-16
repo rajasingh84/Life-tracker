@@ -1095,13 +1095,94 @@ function formatDuration(ms) {
   return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 }
 
-// ============ LOG ============
-function addLog() {
+// ============ LOG (AI POWERED) ============
+async function addLog() {
   const inp = document.getElementById('logInput');
   const text = inp.value.trim();
   if (!text) return;
 
+  const sendBtn = document.querySelector('.send-btn');
+  sendBtn.textContent = '⏳';
+  sendBtn.disabled = true;
+  inp.value = '';
+  inp.style.height = 'auto';
+
   const now = new Date();
+
+  // Build context of pending activities for AI
+  const pending = state.logs.filter(l => l.isStart && !l.matched);
+  const pendingStr = pending.length > 0
+    ? pending.map(l => `"${l.activity}" started at ${new Date(l.time).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',hour12:true})}`).join(', ')
+    : 'none';
+
+  let parsed = null;
+
+  if (state.apiKey) {
+    try {
+      const prompt = `You are a life tracking assistant. Parse this log entry and return ONLY a JSON object, no explanation.
+
+User wrote: "${text}"
+Currently running activities: ${pendingStr}
+Current time: ${now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true})}
+
+Return JSON with these fields:
+- type: "activity_start" | "activity_end" | "expense" | "note"
+- activity: clean activity name in English (e.g. "studying", "sleeping", "gym", "walk") - null if not activity
+- amount: number if expense, null otherwise
+- category: "🍔 Food" | "🚗 Travel" | "📚 Study" | "💊 Health" | "📦 Other" - only if expense
+- display: short clean display text (2-3 words max, capitalize first letter)
+
+Examples:
+"start studying" → {"type":"activity_start","activity":"studying","amount":null,"category":null,"display":"Studying"}
+"padhai shuru ki" → {"type":"activity_start","activity":"studying","amount":null,"category":null,"display":"Studying"}
+"study khatam" → {"type":"activity_end","activity":"studying","amount":null,"category":null,"display":"Studying"}
+"so gaya" → {"type":"activity_start","activity":"sleeping","amount":null,"category":null,"display":"Sleeping"}
+"uth gaya" → {"type":"activity_end","activity":"sleeping","amount":null,"category":null,"display":"Sleeping"}
+"120 rs chai pe kharch hua" → {"type":"expense","activity":null,"amount":120,"category":"🍔 Food","display":"Chai expense"}
+"went for a walk" → {"type":"activity_start","activity":"walk","amount":null,"category":null,"display":"Walk"}
+"had lunch at dominos 250 rs" → {"type":"expense","activity":null,"amount":250,"category":"🍔 Food","display":"Lunch - Dominos"}`;
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': state.apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 200,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      const data = await res.json();
+      const raw = data.content?.[0]?.text || '';
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+    } catch(e) {
+      console.error('AI parse error:', e);
+    }
+  }
+
+  // Fallback if no API or parse failed
+  if (!parsed) {
+    const isS = isStartEvent(text);
+    const isE = isEndEvent(text);
+    const act = extractActivity(text);
+    const expMatch = text.match(/(?:₹|rs\.?|rupees?|kharch|spend|spent|paid|diya)\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*(?:₹|rs\.?|rupees?|kharch|spend|spent|paid|ka|ki)/i);
+    const amt = expMatch ? parseFloat(expMatch[1] || expMatch[2]) : null;
+    parsed = {
+      type: amt ? 'expense' : isS && !isE ? 'activity_start' : isE ? 'activity_end' : 'note',
+      activity: act || null,
+      amount: amt,
+      category: detectCategory(text),
+      display: text.slice(0,30)
+    };
+  }
+
+  // Build entry
   const entry = {
     id: Date.now(),
     text: text,
@@ -1110,49 +1191,51 @@ function addLog() {
     type: 'log',
     isStart: false,
     isEnd: false,
-    activity: '',
+    activity: parsed.activity || '',
     matched: false,
-    duration: null
+    duration: null,
+    display: parsed.display || text
   };
 
-  const activityName = extractActivity(text);
-  const isStart = isStartEvent(text);
-  const isEnd = isEndEvent(text);
-
-  if (isStart && !isEnd) {
-    entry.isStart = true;
-    entry.activity = activityName;
+  if (parsed.type === 'activity_start') {
     entry.type = 'activity-start';
-  } else if (isEnd) {
-    entry.isEnd = true;
-    entry.activity = activityName;
+    entry.isStart = true;
+  } else if (parsed.type === 'activity_end') {
     entry.type = 'activity-end';
-    const matchedStart = findMatchingStart(activityName, now);
+    entry.isEnd = true;
+    // Find matching start
+    const matchedStart = state.logs.find(l =>
+      l.isStart && !l.matched &&
+      l.activity && parsed.activity &&
+      (l.activity.toLowerCase().includes(parsed.activity.toLowerCase()) ||
+       parsed.activity.toLowerCase().includes(l.activity.toLowerCase()) ||
+       activitySimilarity(l.activity, parsed.activity))
+    );
     if (matchedStart) {
       const diff = now - new Date(matchedStart.time);
       entry.duration = formatDuration(diff);
-      entry.matchedActivity = matchedStart.activity || activityName;
+      entry.matchedActivity = matchedStart.display || matchedStart.activity;
       const si = state.logs.findIndex(l => l.id === matchedStart.id);
       if (si !== -1) state.logs[si].matched = true;
     }
-  }
-
-  // Detect expense
-  const expenseMatch = text.match(/(?:₹|rs\.?|rupees?|kharch|spend|spent|paid|diya)\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*(?:₹|rs\.?|rupees?|kharch|spend|spent|paid|ka|ki)/i);
-  if (expenseMatch) {
-    const amount = parseFloat(expenseMatch[1] || expenseMatch[2]);
-    if (amount > 0) {
-      entry.type = 'expense';
-      state.expenses.unshift({ id: entry.id, text, amount, time: now.toISOString(), category: detectCategory(text) });
-    }
+  } else if (parsed.type === 'expense' && parsed.amount > 0) {
+    entry.type = 'expense';
+    state.expenses.unshift({
+      id: entry.id,
+      text,
+      amount: parsed.amount,
+      time: now.toISOString(),
+      category: parsed.category || detectCategory(text)
+    });
   }
 
   state.logs.unshift(entry);
   save();
-  inp.value = '';
-  inp.style.height = 'auto';
+
   document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
   state.selectedMood = '';
+  sendBtn.textContent = '↑';
+  sendBtn.disabled = false;
   renderLogFeed();
   renderExpense();
   renderStreak();
@@ -1237,7 +1320,7 @@ function renderLogFeed() {
         const { start, end } = item;
         const startT = new Date(start.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
         const endT = new Date(end.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-        const actLabel = (end.matchedActivity || end.activity || start.activity || '').replace(/\b\w/g, c => c.toUpperCase());
+        const actLabel = (end.matchedActivity || end.display || end.activity || start.display || start.activity || '').replace(/\b\w/g, c => c.toUpperCase());
         html += `<div class="log-entry" style="border-left:3px solid var(--accent);">
           <button class="log-entry-delete" onclick="deleteCombined(${start.id},${end.id})">🗑</button>
           <div class="log-entry-time">${startT} → ${endT}</div>
