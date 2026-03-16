@@ -925,6 +925,52 @@ function renderShortcutManage() {
   });
 }
 
+// ============ SMART ACTIVITY DETECTION ============
+const START_WORDS = ['start','starting','started','begin','beginning','shuru','chalu','open','opening','laga','kar raha','starting now'];
+const END_WORDS = ['end','ended','ending','stop','stopped','finish','finished','done','complete','completed','khatam','band','over','ho gaya','kar liya','khatm'];
+
+function extractActivity(text) {
+  let activity = text.toLowerCase().trim();
+  [...START_WORDS, ...END_WORDS].forEach(w => {
+    activity = activity.replace(new RegExp('\\b' + w + '\\b', 'g'), '');
+  });
+  return activity.replace(/\s+/g, ' ').trim();
+}
+
+function isStartEvent(text) {
+  const lower = text.toLowerCase();
+  return START_WORDS.some(w => lower.includes(w));
+}
+
+function isEndEvent(text) {
+  const lower = text.toLowerCase();
+  return END_WORDS.some(w => lower.includes(w));
+}
+
+function activitySimilarity(a, b) {
+  if (!a || !b) return false;
+  const wordsA = a.split(' ').filter(w => w.length > 2);
+  const wordsB = b.split(' ').filter(w => w.length > 2);
+  if (!wordsA.length || !wordsB.length) return false;
+  return wordsA.some(wa => wordsB.some(wb => wa.includes(wb) || wb.includes(wa)));
+}
+
+function findMatchingStart(activity, beforeTime) {
+  return state.logs.find(l => {
+    if (new Date(l.time) >= beforeTime) return false;
+    if (!l.isStart || l.matched) return false;
+    return activitySimilarity(l.activity, activity);
+  });
+}
+
+function formatDuration(ms) {
+  if (ms < 0) return null;
+  const totalMins = Math.floor(ms / 60000);
+  const hours = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+}
+
 // ============ LOG ============
 function addLog() {
   const inp = document.getElementById('logInput');
@@ -937,21 +983,33 @@ function addLog() {
     text: text,
     time: now.toISOString(),
     mood: state.selectedMood || '',
-    type: 'log'
+    type: 'log',
+    isStart: false,
+    isEnd: false,
+    activity: '',
+    matched: false,
+    duration: null
   };
 
-  // Detect sleep patterns
-  const lowerText = text.toLowerCase();
-  if (lowerText.includes('sleeping end') || lowerText.includes('sleep end') || lowerText.includes('uthh') || lowerText.includes('woke up') || lowerText.includes('good morning')) {
-    const sleepStart = state.logs.slice().reverse().find(l =>
-      l.text.toLowerCase().includes('sleeping start') || l.text.toLowerCase().includes('sleep start') || l.text.toLowerCase().includes('so raha') || l.text.toLowerCase().includes('sone ja')
-    );
-    if (sleepStart) {
-      const diff = now - new Date(sleepStart.time);
-      const hours = Math.floor(diff / 3600000);
-      const mins = Math.floor((diff % 3600000) / 60000);
-      entry.sleepCalc = `Neend: ${hours}h ${mins}m`;
-      entry.type = 'sleep';
+  const activityName = extractActivity(text);
+  const isStart = isStartEvent(text);
+  const isEnd = isEndEvent(text);
+
+  if (isStart && !isEnd) {
+    entry.isStart = true;
+    entry.activity = activityName;
+    entry.type = 'activity-start';
+  } else if (isEnd) {
+    entry.isEnd = true;
+    entry.activity = activityName;
+    entry.type = 'activity-end';
+    const matchedStart = findMatchingStart(activityName, now);
+    if (matchedStart) {
+      const diff = now - new Date(matchedStart.time);
+      entry.duration = formatDuration(diff);
+      entry.matchedActivity = matchedStart.activity || activityName;
+      const si = state.logs.findIndex(l => l.id === matchedStart.id);
+      if (si !== -1) state.logs[si].matched = true;
     }
   }
 
@@ -961,14 +1019,7 @@ function addLog() {
     const amount = parseFloat(expenseMatch[1] || expenseMatch[2]);
     if (amount > 0) {
       entry.type = 'expense';
-      const expEntry = {
-        id: entry.id,
-        text: text,
-        amount: amount,
-        time: now.toISOString(),
-        category: detectCategory(text)
-      };
-      state.expenses.unshift(expEntry);
+      state.expenses.unshift({ id: entry.id, text, amount, time: now.toISOString(), category: detectCategory(text) });
     }
   }
 
@@ -976,11 +1027,8 @@ function addLog() {
   save();
   inp.value = '';
   inp.style.height = 'auto';
-
-  // Reset mood
   document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
   state.selectedMood = '';
-
   renderLogFeed();
   renderExpense();
   renderStreak();
@@ -997,8 +1045,8 @@ function detectCategory(text) {
 }
 
 function deleteLog(id) {
+  if (!confirm('Ye log delete karna hai?')) return;
   state.logs = state.logs.filter(l => l.id !== id);
-  // also remove from expenses if it was an expense
   state.expenses = state.expenses.filter(e => e.id !== id);
   save();
   renderLogFeed();
@@ -1024,18 +1072,35 @@ function renderLogFeed() {
     html += `<div class="date-sep">${date}</div>`;
     entries.forEach(e => {
       const t = new Date(e.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-      html += `<div class="log-entry ${e.type === 'sleep' ? 'sleep-entry' : ''} ${e.type === 'expense' ? 'expense-entry' : ''}">
-        <button class="log-entry-delete" onclick="deleteLog(${e.id})">✕</button>
+
+      let borderColor = '';
+      let badge = '';
+
+      if (e.type === 'activity-start') {
+        borderColor = 'border-left: 3px solid var(--green);';
+        badge = `<div class="calc-badge" style="background:rgba(90,154,106,0.2);color:var(--green)">▶ STARTED</div>`;
+      } else if (e.type === 'activity-end') {
+        borderColor = 'border-left: 3px solid var(--accent);';
+        if (e.duration) {
+          badge = `<div class="calc-badge">⏱ ${e.duration}</div>`;
+        } else {
+          badge = `<div class="calc-badge" style="opacity:0.5">⏱ Start nahi mila</div>`;
+        }
+      } else if (e.type === 'expense') {
+        borderColor = 'border-left: 3px solid var(--accent2);';
+      }
+
+      html += `<div class="log-entry" style="${borderColor}">
+        <button class="log-entry-delete" onclick="deleteLog(${e.id})">🗑</button>
         <div class="log-entry-time">${t}</div>
         <div class="log-entry-text">${e.text}</div>
         ${e.mood ? `<span class="log-entry-tag">${e.mood}</span>` : ''}
-        ${e.sleepCalc ? `<div class="calc-badge">⏱ ${e.sleepCalc}</div>` : ''}
+        ${badge}
       </div>`;
     });
   });
 
   feed.innerHTML = html;
-  feed.scrollTop = 0;
 }
 
 // ============ STREAK ============
