@@ -647,6 +647,115 @@
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+  /* TIMELINE PAGE */
+  .timeline-date-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tl-date-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .tl-nav-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 5px 12px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .timeline-wrap {
+    padding: 12px;
+    position: relative;
+  }
+  .tl-hour-row {
+    display: flex;
+    align-items: flex-start;
+    min-height: 44px;
+    position: relative;
+  }
+  .tl-hour-label {
+    width: 46px;
+    flex-shrink: 0;
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    padding-top: 4px;
+    text-align: right;
+    padding-right: 10px;
+  }
+  .tl-hour-line {
+    flex: 1;
+    border-top: 1px solid var(--border);
+    padding-top: 4px;
+    min-height: 40px;
+    position: relative;
+  }
+  .tl-block {
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    margin-bottom: 3px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #fff;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .tl-block-time { font-size: 9px; opacity: 0.8; flex-shrink: 0; margin-left: 6px; }
+  .tl-now-line {
+    position: absolute;
+    left: 46px; right: 0;
+    height: 2px;
+    background: var(--danger);
+    z-index: 5;
+  }
+  .tl-now-dot {
+    width: 8px; height: 8px;
+    background: var(--danger);
+    border-radius: 50%;
+    position: absolute;
+    left: 42px;
+    margin-top: -3px;
+    z-index: 5;
+  }
+  .tl-empty { text-align: center; padding: 20px; color: var(--muted); font-size: 12px; }
+  .tl-pending-block {
+    margin: 8px 12px;
+    background: var(--bg2);
+    border: 1px dashed var(--accent);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tl-pending-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.5s infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+  .tl-pending-text { font-size: 12px; color: var(--accent); font-family: 'Syne', sans-serif; font-weight: 700; }
   /* SCROLLBAR */
   ::-webkit-scrollbar { width: 3px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -771,10 +880,24 @@
   </div>
 </div>
 
+<!-- ============ TIMELINE PAGE ============ -->
+<div class="page" id="page-timeline">
+  <div class="timeline-date-nav">
+    <button class="tl-nav-btn" onclick="tlChangeDay(-1)">‹</button>
+    <div class="tl-date-label" id="tlDateLabel"></div>
+    <button class="tl-nav-btn" onclick="tlChangeDay(1)">›</button>
+  </div>
+  <div id="tlPending"></div>
+  <div class="timeline-wrap" id="timelineWrap"></div>
+</div>
+
 <!-- ============ TABS ============ -->
-<div class="tabs">
+<div class="tabs" style="grid-template-columns: repeat(5, 1fr)">
   <button class="tab-btn active" onclick="switchTab('log', this)">
     <span class="tab-icon">📝</span>LOG
+  </button>
+  <button class="tab-btn" onclick="switchTab('timeline', this)">
+    <span class="tab-icon">⏰</span>DAY
   </button>
   <button class="tab-btn" onclick="switchTab('expense', this)">
     <span class="tab-icon">💸</span>EXPENSE
@@ -862,7 +985,8 @@ function switchTab(name, btn) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   btn.classList.add('active');
-  if (name === 'analysis') { initCharts(); }
+  if (name === 'analysis') initCharts();
+  if (name === 'timeline') renderTimeline();
 }
 
 // ============ MOOD ============
@@ -1060,47 +1184,242 @@ function renderLogFeed() {
     return;
   }
 
+  // Build combined display list
+  const displayEntries = [];
+  const usedIds = new Set();
+
+  // Process in chronological order for matching, display in reverse
+  const sorted = [...state.logs].sort((a, b) => new Date(a.time) - new Date(b.time));
+
+  sorted.forEach(e => {
+    if (usedIds.has(e.id)) return;
+    if (e.type === 'activity-end') {
+      const matchStart = sorted.find(l =>
+        !usedIds.has(l.id) && l.isStart && l.activity &&
+        activitySimilarity(l.activity, e.activity) &&
+        new Date(l.time) <= new Date(e.time)
+      );
+      if (matchStart) {
+        usedIds.add(matchStart.id);
+        usedIds.add(e.id);
+        displayEntries.push({ type: 'combined', start: matchStart, end: e, sortTime: e.time });
+      } else {
+        usedIds.add(e.id);
+        displayEntries.push({ type: 'single', entry: e, sortTime: e.time });
+      }
+    } else if (e.type === 'activity-start') {
+      usedIds.add(e.id);
+      if (!e.matched) {
+        displayEntries.push({ type: 'pending', entry: e, sortTime: e.time });
+      }
+    } else {
+      usedIds.add(e.id);
+      displayEntries.push({ type: 'single', entry: e, sortTime: e.time });
+    }
+  });
+
+  // Sort newest first
+  displayEntries.sort((a, b) => new Date(b.sortTime) - new Date(a.sortTime));
+
+  // Group by date
   const grouped = {};
-  state.logs.forEach(l => {
-    const d = new Date(l.time).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-    if (!grouped[d]) grouped[d] = [];
-    grouped[d].push(l);
+  displayEntries.forEach(d => {
+    const dateKey = new Date(d.sortTime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (!grouped[dateKey]) grouped[dateKey] = [];
+    grouped[dateKey].push(d);
   });
 
   let html = '';
-  Object.entries(grouped).forEach(([date, entries]) => {
+  Object.entries(grouped).forEach(([date, items]) => {
     html += `<div class="date-sep">${date}</div>`;
-    entries.forEach(e => {
-      const t = new Date(e.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-      let borderColor = '';
-      let badge = '';
-
-      if (e.type === 'activity-start') {
-        borderColor = 'border-left: 3px solid var(--green);';
-        badge = `<div class="calc-badge" style="background:rgba(90,154,106,0.2);color:var(--green)">▶ STARTED</div>`;
-      } else if (e.type === 'activity-end') {
-        borderColor = 'border-left: 3px solid var(--accent);';
-        if (e.duration) {
-          badge = `<div class="calc-badge">⏱ ${e.duration}</div>`;
-        } else {
-          badge = `<div class="calc-badge" style="opacity:0.5">⏱ Start nahi mila</div>`;
-        }
-      } else if (e.type === 'expense') {
-        borderColor = 'border-left: 3px solid var(--accent2);';
+    items.forEach(item => {
+      if (item.type === 'combined') {
+        const { start, end } = item;
+        const startT = new Date(start.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const endT = new Date(end.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const actLabel = (end.matchedActivity || end.activity || start.activity || '').replace(/\b\w/g, c => c.toUpperCase());
+        html += `<div class="log-entry" style="border-left:3px solid var(--accent);">
+          <button class="log-entry-delete" onclick="deleteCombined(${start.id},${end.id})">🗑</button>
+          <div class="log-entry-time">${startT} → ${endT}</div>
+          <div class="log-entry-text" style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;">${actLabel}</div>
+          <div class="calc-badge">⏱ ${end.duration || '0m'}</div>
+          ${end.mood ? `<span class="log-entry-tag">${end.mood}</span>` : ''}
+        </div>`;
+      } else if (item.type === 'pending') {
+        const t = new Date(item.entry.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const actLabel = (item.entry.activity || item.entry.text || '').replace(/\b\w/g, c => c.toUpperCase());
+        html += `<div class="log-entry" style="border-left:3px solid var(--green);">
+          <button class="log-entry-delete" onclick="deleteLog(${item.entry.id})">🗑</button>
+          <div class="log-entry-time">${t} → abhi tak</div>
+          <div class="log-entry-text" style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;">${actLabel}</div>
+          <div class="calc-badge" style="background:rgba(90,154,106,0.2);color:var(--green)">⏳ Chal raha hai...</div>
+        </div>`;
+      } else {
+        const e = item.entry;
+        const t = new Date(e.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const border = e.type === 'expense' ? 'border-left:3px solid var(--accent2);' : '';
+        html += `<div class="log-entry" style="${border}">
+          <button class="log-entry-delete" onclick="deleteLog(${e.id})">🗑</button>
+          <div class="log-entry-time">${t}</div>
+          <div class="log-entry-text">${e.text}</div>
+          ${e.mood ? `<span class="log-entry-tag">${e.mood}</span>` : ''}
+        </div>`;
       }
-
-      html += `<div class="log-entry" style="${borderColor}">
-        <button class="log-entry-delete" onclick="deleteLog(${e.id})">🗑</button>
-        <div class="log-entry-time">${t}</div>
-        <div class="log-entry-text">${e.text}</div>
-        ${e.mood ? `<span class="log-entry-tag">${e.mood}</span>` : ''}
-        ${badge}
-      </div>`;
     });
   });
 
-  feed.innerHTML = html;
+  feed.innerHTML = html || `<div class="empty-state"><div class="empty-icon">📝</div>Koi log nahi</div>`;
+}
+
+function deleteCombined(startId, endId) {
+  if (!confirm('Ye activity delete karna hai?')) return;
+  state.logs = state.logs.filter(l => l.id !== startId && l.id !== endId);
+  save();
+  renderLogFeed();
+  renderTimeline();
+}
+
+// ============ TIMELINE ============
+const ACTIVITY_COLORS = [
+  '#d4a843','#e07a3a','#4a7fa0','#5a9a6a','#9a5a9a','#c0392b','#2980b9','#27ae60','#e74c3c','#8e44ad'
+];
+let tlDate = new Date();
+tlDate.setHours(0,0,0,0);
+const tlColorMap = {};
+let tlColorIdx = 0;
+
+function getActivityColor(name) {
+  const key = (name || '').toLowerCase().trim();
+  if (!tlColorMap[key]) {
+    tlColorMap[key] = ACTIVITY_COLORS[tlColorIdx % ACTIVITY_COLORS.length];
+    tlColorIdx++;
+  }
+  return tlColorMap[key];
+}
+
+function tlChangeDay(dir) {
+  tlDate = new Date(tlDate.getTime() + dir * 86400000);
+  renderTimeline();
+}
+
+function renderTimeline() {
+  const wrap = document.getElementById('timelineWrap');
+  const label = document.getElementById('tlDateLabel');
+  const pending = document.getElementById('tlPending');
+  if (!wrap) return;
+
+  const todayStr = tlDate.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  label.textContent = todayStr;
+
+  const dayStart = new Date(tlDate);
+  const dayEnd = new Date(tlDate.getTime() + 86400000);
+  const dateStr = tlDate.toISOString().split('T')[0];
+
+  // Collect completed activities for this day
+  const activities = [];
+  const usedIds = new Set();
+  const sorted = [...state.logs].sort((a,b) => new Date(a.time) - new Date(b.time));
+
+  sorted.forEach(e => {
+    if (usedIds.has(e.id)) return;
+    if (e.type === 'activity-end') {
+      const matchStart = sorted.find(l =>
+        !usedIds.has(l.id) && l.isStart && l.activity &&
+        activitySimilarity(l.activity, e.activity) &&
+        new Date(l.time) <= new Date(e.time)
+      );
+      if (matchStart) {
+        usedIds.add(matchStart.id); usedIds.add(e.id);
+        const startD = new Date(matchStart.time);
+        const endD = new Date(e.time);
+        if (startD >= dayStart && startD < dayEnd) {
+          activities.push({ name: e.matchedActivity || e.activity || matchStart.activity, start: startD, end: endD });
+        }
+      }
+    }
+  });
+
+  // Pending (running) activities
+  const pendingActs = sorted.filter(e => e.type === 'activity-start' && !e.matched && !usedIds.has(e.id));
+  if (pendingActs.length > 0) {
+    const pa = pendingActs[pendingActs.length - 1];
+    const sinceT = new Date(pa.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const actLabel = (pa.activity || pa.text || '').replace(/\b\w/g, c => c.toUpperCase());
+    pending.innerHTML = `<div class="tl-pending-block">
+      <div class="tl-pending-dot"></div>
+      <div>
+        <div class="tl-pending-text">⏳ ${actLabel} chal raha hai</div>
+        <div class="tl-pending-since">Shuru: ${sinceT}</div>
+      </div>
+    </div>`;
+  } else {
+    pending.innerHTML = '';
+  }
+
+  // Build 24-hour grid
+  const now = new Date();
+  const isToday = dateStr === now.toISOString().split('T')[0];
+  const nowMinutes = isToday ? now.getHours() * 60 + now.getMinutes() : -1;
+
+  let html = '';
+  for (let h = 0; h < 24; h++) {
+    const hLabel = h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h-12}pm`;
+    const hourStart = h * 60;
+    const hourEnd = (h + 1) * 60;
+
+    // Find activities that overlap with this hour
+    const hourActs = activities.filter(a => {
+      const aStart = a.start.getHours() * 60 + a.start.getMinutes();
+      const aEnd = a.end.getHours() * 60 + a.end.getMinutes();
+      return aStart < hourEnd && aEnd > hourStart;
+    });
+
+    let nowLineHtml = '';
+    if (nowMinutes >= hourStart && nowMinutes < hourEnd) {
+      const pct = ((nowMinutes - hourStart) / 60) * 40;
+      nowLineHtml = `<div class="tl-now-dot" style="top:${pct + 4}px"></div><div class="tl-now-line" style="top:${pct + 8}px"></div>`;
+    }
+
+    let blocksHtml = '';
+    hourActs.forEach(a => {
+      const aStartMin = a.start.getHours() * 60 + a.start.getMinutes();
+      const aEndMin = a.end.getHours() * 60 + a.end.getMinutes();
+      const startT = a.start.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const endT = a.end.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const color = getActivityColor(a.name);
+      const actLabel = (a.name || '').replace(/\b\w/g, c => c.toUpperCase());
+      // Only show block header in the starting hour
+      if (aStartMin >= hourStart && aStartMin < hourEnd) {
+        blocksHtml += `<div class="tl-block" style="background:${color}88;border-left:3px solid ${color};">
+          <span>${actLabel}</span>
+          <span class="tl-block-time">${startT}→${endT}</span>
+        </div>`;
+      }
+    });
+
+    html += `<div class="tl-hour-row">
+      <div class="tl-hour-label">${hLabel}</div>
+      <div class="tl-hour-line" style="position:relative;">
+        ${nowLineHtml}
+        ${blocksHtml}
+      </div>
+    </div>`;
+  }
+
+  if (activities.length === 0 && !isToday) {
+    wrap.innerHTML = `<div class="tl-empty">Is din koi activity record nahi hui</div>` + html;
+  } else {
+    wrap.innerHTML = html;
+  }
+
+  // Scroll to current time or first activity
+  if (isToday) {
+    setTimeout(() => {
+      const rows = wrap.querySelectorAll('.tl-hour-row');
+      const scrollTo = Math.max(0, now.getHours() - 2);
+      if (rows[scrollTo]) rows[scrollTo].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  }
 }
 
 // ============ STREAK ============
