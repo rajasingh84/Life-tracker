@@ -384,13 +384,13 @@ function save(){localStorage.setItem('lt_v4',JSON.stringify(S))}
 async function callAI(prompt, maxTokens=500){
   const key = S.apiKey;
   if(!key) return null;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${key}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
       contents: [{parts: [{text: prompt}]}],
-      generationConfig: {maxOutputTokens: maxTokens, temperature: 0.3}
+      generationConfig: {maxOutputTokens: maxTokens, temperature: 0.1}
     })
   });
   const d = await res.json();
@@ -768,17 +768,15 @@ Return JSON:
 
 Be accurate. Use standard nutritional databases. For supplements like nootropics, vitamins, minerals, stimulants → calories should be 0 or near 0.`;
 
-      const raw = await callAI(prompt, 300);
-      alert('RAW: ' + (raw ? raw.slice(0,200) : 'NULL'));
+      const raw = await callAI(prompt, 500);
       if(raw){
-        const clean = raw.replace(/```json\n?|```\n?/g,'').trim();
-        const m=clean.match(/\{[\s\S]*\}/);
+        const m=raw.match(/\{[\s\S]*\}/);
         if(m){
           try{ parsed=JSON.parse(m[0]); }
-          catch(e){ alert('Parse error: '+e.message); }
-        } else { alert('No JSON found in: '+clean.slice(0,100)); }
+          catch(e){ showToast('Parse error — retry karo'); }
+        }
       }
-    }catch(e){ alert('CATCH: '+e.message); }
+    }catch(e){ showToast('API Error: '+e.message.slice(0,50)); }
   }
 
   if(!parsed) parsed=fallbackNutrition(text);
@@ -866,7 +864,7 @@ async function testAPI(){
   res.style.color='var(--accent)';
   res.textContent='🔄 API call ho rahi hai...';
   try{
-    const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${key}`;
     const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'Reply with just: WORKING'}]}],generationConfig:{maxOutputTokens:10}})});
     const d=await r.json();
     if(d.error){
