@@ -789,28 +789,29 @@ async function addFood(){
   let parsed=null;
   if(S.apiKey){
     try{
-      const prompt=`Parse this food/nutrition entry. Return ONLY valid JSON.
+      const prompt=`You are a nutrition expert. Analyze this food/supplement entry and return ONLY valid JSON.
 
 Entry: "${text}"
 
-Identify if this is a meal/food OR a supplement (protein powder, creatine, vitamins etc).
-Estimate nutrition based on typical Indian/common portions.
+Your job:
+1. Identify what this is - food, drink, supplement, medicine, nootropic, etc
+2. Calculate accurate macros and micros
+3. If it's a pill/tablet/capsule/nootropic/medicine → type = "supplement"
+4. If it's actual food/drink → type = "meal"
 
-JSON: {
+Return JSON:
+{
   "type": "meal" or "supplement",
-  "name": "clean food name",
-  "calories": number (estimate),
-  "protein": number in grams (estimate),
-  "carbs": number in grams (estimate),
-  "fat": number in grams (estimate),
-  "notes": "brief note if needed"
+  "name": "proper clean name",
+  "calories": accurate number,
+  "protein": grams,
+  "carbs": grams,
+  "fat": grams,
+  "fiber": grams,
+  "notes": "any relevant info like serving size, brand, etc"
 }
 
-Examples:
-"2 roti dal sabzi" → {"type":"meal","name":"2 Roti + Dal + Sabzi","calories":450,"protein":15,"carbs":65,"fat":8,"notes":""}
-"whey protein 1 scoop" → {"type":"supplement","name":"Whey Protein","calories":120,"protein":24,"carbs":3,"fat":2,"notes":"1 scoop"}
-"poha breakfast" → {"type":"meal","name":"Poha","calories":250,"protein":5,"carbs":42,"fat":5,"notes":"Breakfast"}
-"creatine 5g" → {"type":"supplement","name":"Creatine","calories":0,"protein":0,"carbs":0,"fat":0,"notes":"5g"}`;
+Be accurate. Use standard nutritional databases. For supplements like nootropics, vitamins, minerals, stimulants → calories should be 0 or near 0.`;
 
       const raw = await callAI(prompt, 200);
       if(raw){
@@ -825,7 +826,7 @@ Examples:
 
   if(!parsed) parsed=fallbackNutrition(text);
 
-  const entry={id:Date.now(),type:parsed.type||'meal',name:parsed.name||text,raw:text,calories:Math.round(parsed.calories||0),protein:Math.round(parsed.protein||0),carbs:Math.round(parsed.carbs||0),fat:Math.round(parsed.fat||0),notes:parsed.notes||'',time:now.toISOString()};
+  const entry={id:Date.now(),type:parsed.type||'meal',name:parsed.name||text,raw:text,calories:Math.round(parsed.calories||0),protein:Math.round(parsed.protein||0),carbs:Math.round(parsed.carbs||0),fat:Math.round(parsed.fat||0),fiber:Math.round(parsed.fiber||0),notes:parsed.notes||'',time:now.toISOString()};
   S.foods.unshift(entry);
   save();
   btn.innerHTML='+'; btn.disabled=false;
@@ -867,6 +868,8 @@ function renderFood(){
         ${f.calories?`<span class="food-macro cal">🔥 ${f.calories} kcal</span>`:''}
         ${f.protein?`<span class="food-macro pro">💪 ${f.protein}g protein</span>`:''}
         ${f.carbs?`<span class="food-macro carb">🌾 ${f.carbs}g carbs</span>`:''}
+        ${f.fat?`<span class="food-macro" style="background:rgba(224,122,58,0.15);color:var(--accent2)">🧈 ${f.fat}g fat</span>`:''}
+        ${f.fiber?`<span class="food-macro" style="background:rgba(90,154,106,0.1);color:var(--green)">🌿 ${f.fiber}g fiber</span>`:''}
       </div>
     </div>`;
   }).join('');
