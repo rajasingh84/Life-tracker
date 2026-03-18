@@ -332,6 +332,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <label class="fl">Anthropic API Key</label>
     <input type="password" class="fi" id="apiInput" placeholder="sk-ant-...">
     <div style="font-size:11px;color:var(--muted);margin-top:4px">console.anthropic.com → API Keys</div>
+    <button onclick="testAPI()" style="margin-top:8px;width:100%;padding:9px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer" id="testBtn">🔌 API TEST KARO</button>
+    <div id="testResult" style="font-size:12px;margin-top:6px;padding:8px;border-radius:8px;display:none"></div>
     <label class="fl">Aapka Naam</label>
     <input type="text" class="fi" id="nameInput" placeholder="Rajanish...">
     <label class="fl">Daily Calorie Goal (kcal)</label>
@@ -880,7 +882,32 @@ function dlCSV(){
 }
 
 // SETTINGS
-function openSettings(){document.getElementById('apiInput').value=S.apiKey;document.getElementById('nameInput').value=S.userName;document.getElementById('calGoalInput').value=S.calorieGoal||2000;renderScM();document.getElementById('settingsModal').classList.add('open')}
+async function testAPI(){
+  const key=document.getElementById('apiInput').value.trim()||S.apiKey;
+  if(!key){document.getElementById('testResult').style.display='block';document.getElementById('testResult').style.background='rgba(192,57,43,0.15)';document.getElementById('testResult').style.color='var(--danger)';document.getElementById('testResult').textContent='❌ API Key nahi hai! Pehle key daalo.';return}
+  const btn=document.getElementById('testBtn');
+  btn.textContent='Testing...'; btn.disabled=true;
+  const res=document.getElementById('testResult');
+  res.style.display='block';
+  res.style.background='rgba(212,168,67,0.1)';
+  res.style.color='var(--accent)';
+  res.textContent='🔄 API call ho rahi hai...';
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:20,messages:[{role:'user',content:'Reply with just: WORKING'}]})});
+    const d=await r.json();
+    if(d.error){
+      res.style.background='rgba(192,57,43,0.15)';res.style.color='var(--danger)';
+      res.textContent='❌ Error: '+d.error.message;
+    } else {
+      res.style.background='rgba(90,154,106,0.15)';res.style.color='var(--green)';
+      res.textContent='✅ API sahi kaam kar rahi hai! Response: '+d.content[0].text;
+    }
+  }catch(e){
+    res.style.background='rgba(192,57,43,0.15)';res.style.color='var(--danger)';
+    res.textContent='❌ Network Error: '+e.message;
+  }
+  btn.textContent='🔌 API TEST KARO'; btn.disabled=false;
+}document.getElementById('apiInput').value=S.apiKey;document.getElementById('nameInput').value=S.userName;document.getElementById('calGoalInput').value=S.calorieGoal||2000;renderScM();document.getElementById('settingsModal').classList.add('open')}
 function closeOvr(e){if(e.target.id==='settingsModal')document.getElementById('settingsModal').classList.remove('open')}
 function saveSettings(){S.apiKey=document.getElementById('apiInput').value.trim();S.userName=document.getElementById('nameInput').value.trim();S.calorieGoal=parseInt(document.getElementById('calGoalInput').value)||2000;save();document.getElementById('settingsModal').classList.remove('open');showToast('Settings save! ✅')}
 function clearAll(){if(confirm('Pakka? Saara data delete?')){S.logs=[];S.expenses=[];S.mistakes=[];S.running=null;S.foods=[];save();renderAll();document.getElementById('settingsModal').classList.remove('open');showToast('Data clear ho gaya')}}
