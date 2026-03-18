@@ -483,31 +483,18 @@ Return JSON:
   }catch(e){return null}
 }
 
-// FALLBACK
+// FALLBACK (only when no API key)
 function fbParse(text){
   const t=text.toLowerCase();
-  const S_W=['start','starting','shuru','begin','chalu','kar raha','laga','so gaya','soye','jaag'];
-  const E_W=['end','khatam','done','finish','stop','ho gaya','uth gaya','woke','completed','band','over','kar liya'];
-  const isS=S_W.some(w=>t.includes(w));
-  const isE=E_W.some(w=>t.includes(w));
   const em=text.match(/(\d+(?:\.\d+)?)\s*(?:rs|rupees?|₹)|(?:rs|rupees?|₹)\s*(\d+(?:\.\d+)?)/i);
   const amt=em?parseFloat(em[1]||em[2]):null;
-  let act=t;
-  [...S_W,...E_W].forEach(w=>{act=act.replace(new RegExp('\\b'+w+'\\b','g'),'')});
-  act=act.replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim();
-  const disp=act?act.replace(/\b\w/g,c=>c.toUpperCase()):text.slice(0,20);
-  if(amt)return{type:'expense',activity:null,display:text.slice(0,25),amount:amt,category:catDetect(text)};
-  if(isS&&!isE)return{type:'start',activity:act||text,display:disp,amount:null,category:null};
-  if(isE)return{type:'end',activity:act||text,display:disp,amount:null,category:null};
+  if(amt) return{type:'expense',activity:null,display:text.slice(0,25),amount:amt,category:'📦 Other'};
+  // Very basic start/end detection as last resort
+  const isS=/start|shuru|begin|chalu|so gaya/i.test(t);
+  const isE=/end|khatam|done|finish|stop|ho gaya|uth gaya/i.test(t);
+  if(isS&&!isE) return{type:'start',activity:text,display:text.slice(0,20),amount:null,category:null};
+  if(isE) return{type:'end',activity:text,display:text.slice(0,20),amount:null,category:null};
   return{type:'note',activity:null,display:text.slice(0,30),amount:null,category:null};
-}
-function catDetect(t){
-  t=t.toLowerCase();
-  if(t.match(/food|khana|pizza|burger|chai|coffee|lunch|dinner|breakfast/))return'🍔 Food';
-  if(t.match(/auto|uber|ola|petrol|bus|train|travel/))return'🚗 Travel';
-  if(t.match(/book|course|study|padhai/))return'📚 Study';
-  if(t.match(/medicine|dawai|doctor/))return'💊 Health';
-  return'📦 Other';
 }
 
 // ADD LOG - MAIN LOGIC
@@ -738,57 +725,10 @@ function initCharts(){
   charts.e=new Chart(document.getElementById('expChart').getContext('2d'),{type:'line',data:{labels,datasets:[{data:exps,borderColor:'rgba(224,122,58,0.9)',backgroundColor:'rgba(224,122,58,0.1)',fill:true,tension:0.4,pointBackgroundColor:'rgba(224,122,58,0.9)',pointRadius:3}]},options:co});
 }
 
-// BASIC NUTRITION LOOKUP (fallback when API fails)
-const NUTRITION_DB = {
-  'egg':        {cal:70,  pro:6,  carb:0,  fat:5},
-  'roti':       {cal:80,  pro:3,  carb:15, fat:1},
-  'rice':       {cal:130, pro:3,  carb:28, fat:0},
-  'dal':        {cal:120, pro:8,  carb:18, fat:2},
-  'milk':       {cal:120, pro:6,  carb:10, fat:5},
-  'banana':     {cal:90,  pro:1,  carb:23, fat:0},
-  'bread':      {cal:70,  pro:3,  carb:13, fat:1},
-  'poha':       {cal:250, pro:5,  carb:42, fat:5},
-  'dahi':       {cal:60,  pro:3,  carb:5,  fat:3},
-  'sabzi':      {cal:80,  pro:2,  carb:10, fat:4},
-  'paneer':     {cal:265, pro:18, carb:3,  fat:20},
-  'chicken':    {cal:165, pro:31, carb:0,  fat:4},
-  'whey':       {cal:120, pro:24, carb:3,  fat:2},
-  'oats':       {cal:150, pro:5,  carb:27, fat:3},
-  'idli':       {cal:60,  pro:2,  carb:12, fat:0},
-  'dosa':       {cal:120, pro:3,  carb:20, fat:3},
-  'samosa':     {cal:250, pro:4,  carb:30, fat:13},
-  'chai':       {cal:50,  pro:1,  carb:8,  fat:2},
-  'coffee':     {cal:15,  pro:0,  carb:3,  fat:0},
-  'apple':      {cal:80,  pro:0,  carb:21, fat:0},
-  'creatine':   {cal:0,   pro:0,  carb:0,  fat:0},
-};
-
+// FOOD FALLBACK (only when no API key)
 function fallbackNutrition(text){
-  const t=text.toLowerCase();
-  let cal=0, pro=0, carb=0, fat=0;
-  const numMatch=t.match(/(\d+(?:\.\d+)?)\s*(?:g|gm|gram|grm)/);
-  const countMatch=t.match(/(\d+)/);
-  const qty=numMatch?parseFloat(numMatch[1])/100:countMatch?Math.min(parseInt(countMatch[1]),10):1;
-
-  let found=false;
-  for(const [key,val] of Object.entries(NUTRITION_DB)){
-    if(t.includes(key)){
-      const multiplier=key==='rice'&&numMatch?parseFloat(numMatch[1])/100:qty;
-      cal+=val.cal*multiplier; pro+=val.pro*multiplier; carb+=val.carb*multiplier; fat+=val.fat*multiplier;
-      found=true;
-    }
-  }
-  if(!found){cal=200;pro=5;carb=25;fat=8;}// generic estimate
-  const isSupp=/protein|creatine|vitamin|bcaa|omega|whey|casein|supplement/i.test(t);
-  return{
-    type:isSupp?'supplement':'meal',
-    name:text.slice(0,40),
-    calories:Math.round(cal),
-    protein:Math.round(pro),
-    carbs:Math.round(carb),
-    fat:Math.round(fat),
-    notes:found?'Estimated':'Generic estimate'
-  };
+  const isSupp=/tablet|capsule|pill|powder|syrup|drops/i.test(text);
+  return{type:isSupp?'supplement':'meal',name:text.slice(0,40),calories:0,protein:0,carbs:0,fat:0,fiber:0,notes:'API nahi hai — manually add karo'};
 }
 async function addFood(){
   const inp=document.getElementById('foodInput');
@@ -830,10 +770,7 @@ Be accurate. Use standard nutritional databases. For supplements like nootropics
       const raw = await callAI(prompt, 200);
       if(raw){
         const m=raw.match(/\{[\s\S]*\}/);
-        if(m){
-          const apiResult=JSON.parse(m[0]);
-          if(apiResult.calories>0||apiResult.type==='supplement') parsed=apiResult;
-        }
+        if(m) parsed=JSON.parse(m[0]);
       }
     }catch(e){parsed=null}
   }
