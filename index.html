@@ -907,7 +907,9 @@ async function testAPI(){
     res.textContent='❌ Network Error: '+e.message;
   }
   btn.textContent='🔌 API TEST KARO'; btn.disabled=false;
-}document.getElementById('apiInput').value=S.apiKey;document.getElementById('nameInput').value=S.userName;document.getElementById('calGoalInput').value=S.calorieGoal||2000;renderScM();document.getElementById('settingsModal').classList.add('open')}
+}
+
+function openSettings(){document.getElementById('apiInput').value=S.apiKey;document.getElementById('nameInput').value=S.userName;document.getElementById('calGoalInput').value=S.calorieGoal||2000;renderScM();document.getElementById('settingsModal').classList.add('open')}
 function closeOvr(e){if(e.target.id==='settingsModal')document.getElementById('settingsModal').classList.remove('open')}
 function saveSettings(){S.apiKey=document.getElementById('apiInput').value.trim();S.userName=document.getElementById('nameInput').value.trim();S.calorieGoal=parseInt(document.getElementById('calGoalInput').value)||2000;save();document.getElementById('settingsModal').classList.remove('open');showToast('Settings save! ✅')}
 function clearAll(){if(confirm('Pakka? Saara data delete?')){S.logs=[];S.expenses=[];S.mistakes=[];S.running=null;S.foods=[];save();renderAll();document.getElementById('settingsModal').classList.remove('open');showToast('Data clear ho gaya')}}
