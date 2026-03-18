@@ -770,17 +770,17 @@ Be accurate. Use standard nutritional databases. For supplements like nootropics
 
       const raw = await callAI(prompt, 300);
       if(raw){
-        // Remove markdown code blocks if present
-        const clean = raw.replace(/```json\n?|\```\n?/g,'').trim();
+        showToast('AI: '+raw.slice(0,60)); // DEBUG
+        const clean = raw.replace(/```json\n?|```\n?/g,'').trim();
         const m=clean.match(/\{[\s\S]*\}/);
         if(m){
           try{ parsed=JSON.parse(m[0]); }
-          catch(e){ showToast('Parse error — try again'); }
+          catch(e){ showToast('Parse error: '+e.message); }
         }
       } else {
-        showToast('AI se response nahi aaya');
+        showToast('AI se koi response nahi aaya');
       }
-    }catch(e){ showToast('Error: '+e.message.slice(0,40)); }
+    }catch(e){ showToast('Error: '+e.message.slice(0,60)); }
   }
 
   if(!parsed) parsed=fallbackNutrition(text);
