@@ -395,7 +395,8 @@ async function callAI(prompt, maxTokens=500){
   });
   const d = await res.json();
   if(d.error) throw new Error(d.error.message);
-  return d.candidates?.[0]?.content?.parts?.[0]?.text || null;
+  const text = d.candidates?.[0]?.content?.parts?.[0]?.text || null;
+  return text ? text.replace(/```json\n?|```\n?/g,'').trim() : null;
 }
 function renderAll(){renderSc();renderStreak();renderBanner();renderFeed();renderExp();renderMist();renderFood()}
 
@@ -767,12 +768,19 @@ Return JSON:
 
 Be accurate. Use standard nutritional databases. For supplements like nootropics, vitamins, minerals, stimulants → calories should be 0 or near 0.`;
 
-      const raw = await callAI(prompt, 200);
+      const raw = await callAI(prompt, 300);
       if(raw){
-        const m=raw.match(/\{[\s\S]*\}/);
-        if(m) parsed=JSON.parse(m[0]);
+        // Remove markdown code blocks if present
+        const clean = raw.replace(/```json\n?|\```\n?/g,'').trim();
+        const m=clean.match(/\{[\s\S]*\}/);
+        if(m){
+          try{ parsed=JSON.parse(m[0]); }
+          catch(e){ showToast('Parse error — try again'); }
+        }
+      } else {
+        showToast('AI se response nahi aaya');
       }
-    }catch(e){parsed=null}
+    }catch(e){ showToast('Error: '+e.message.slice(0,40)); }
   }
 
   if(!parsed) parsed=fallbackNutrition(text);
