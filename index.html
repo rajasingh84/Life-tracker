@@ -448,21 +448,35 @@ function cancelRunning(){if(!confirm('Cancel karna hai?'))return;S.running=null;
 // AI PARSE
 async function aiParse(text){
   if(!S.apiKey) return null;
-  const ctx=S.running?`Currently running: "${S.running.activity}" since ${new Date(S.running.startTime).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})}`:'Nothing running';
-  const prompt=`Parse this life tracker entry. Return ONLY valid JSON, no explanation.
+  const ctx=S.running
+    ?`Currently running activity: "${S.running.activity}" (started at ${new Date(S.running.startTime).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})})`
+    :'No activity currently running';
+  const prompt=`You are a life tracker assistant. Parse this log entry and return ONLY valid JSON.
 
 Entry: "${text}"
-${ctx}
+Context: ${ctx}
+Language: Could be English, Hindi, Hinglish, or mixed — understand all.
 
-Rules:
-- Starting something (study shuru, gym start, so gaya, padhai, trading shuru, etc) = type "start"
-- Ending something (study khatam, gym done, uth gaya, ho gaya, band kiya, etc) = type "end"
-- Money/expense (rs, rupees, kharch, paid) = type "expense"
-- Everything else = type "note"
+Determine the intent:
+- Is the person STARTING an activity? → type = "start"
+- Is the person ENDING/completing an activity? → type = "end"  
+- Is it a money/expense entry? → type = "expense"
+- Is it just a note/observation? → type = "note"
 
-JSON: {"type":"start|end|expense|note","activity":"clean name like studying/sleeping/gym","display":"Short Title","amount":null or number,"category":"🍔 Food|🚗 Travel|📚 Study|💊 Health|📦 Other"}`;
+Use your understanding of language to detect intent — any language, any phrasing, any activity type.
+For "end": try to match the activity name with the currently running activity if context is provided.
+For "expense": extract the amount in numbers.
+
+Return JSON:
+{
+  "type": "start|end|expense|note",
+  "activity": "clean english activity name (e.g. studying, sleeping, gym, trading, walking, reading)",
+  "display": "Short display title (2-3 words, capitalized)",
+  "amount": null or number,
+  "category": "🍔 Food|🚗 Travel|📚 Study|💊 Health|📦 Other|💰 Finance|🎮 Entertainment"
+}`;
   try{
-    const raw = await callAI(prompt, 150);
+    const raw = await callAI(prompt, 200);
     if(!raw) return null;
     const m=raw.match(/\{[\s\S]*\}/);
     return m?JSON.parse(m[0]):null;
