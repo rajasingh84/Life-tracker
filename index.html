@@ -329,9 +329,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   <div class="sheet">
     <div class="sh"></div>
     <div class="st">⚙️ Settings</div>
-    <label class="fl">Anthropic API Key</label>
-    <input type="password" class="fi" id="apiInput" placeholder="sk-ant-...">
-    <div style="font-size:11px;color:var(--muted);margin-top:4px">console.anthropic.com → API Keys</div>
+    <label class="fl">Google Gemini API Key</label>
+    <input type="password" class="fi" id="apiInput" placeholder="AIza...">
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">aistudio.google.com → Get API Key (FREE!)</div>
     <button onclick="testAPI()" style="margin-top:8px;width:100%;padding:9px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer" id="testBtn">🔌 API TEST KARO</button>
     <div id="testResult" style="font-size:12px;margin-top:6px;padding:8px;border-radius:8px;display:none"></div>
     <label class="fl">Aapka Naam</label>
@@ -379,6 +379,24 @@ function init(){
   renderAll();
 }
 function save(){localStorage.setItem('lt_v4',JSON.stringify(S))}
+
+// ============ GEMINI API HELPER ============
+async function callAI(prompt, maxTokens=500){
+  const key = S.apiKey;
+  if(!key) return null;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      contents: [{parts: [{text: prompt}]}],
+      generationConfig: {maxOutputTokens: maxTokens, temperature: 0.3}
+    })
+  });
+  const d = await res.json();
+  if(d.error) throw new Error(d.error.message);
+  return d.candidates?.[0]?.content?.parts?.[0]?.text || null;
+}
 function renderAll(){renderSc();renderStreak();renderBanner();renderFeed();renderExp();renderMist();renderFood()}
 
 // TABS
@@ -431,7 +449,7 @@ function cancelRunning(){if(!confirm('Cancel karna hai?'))return;S.running=null;
 async function aiParse(text){
   if(!S.apiKey) return null;
   const ctx=S.running?`Currently running: "${S.running.activity}" since ${new Date(S.running.startTime).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})}`:'Nothing running';
-  const prompt=`Parse this life tracker entry. Return ONLY valid JSON.
+  const prompt=`Parse this life tracker entry. Return ONLY valid JSON, no explanation.
 
 Entry: "${text}"
 ${ctx}
@@ -444,9 +462,8 @@ Rules:
 
 JSON: {"type":"start|end|expense|note","activity":"clean name like studying/sleeping/gym","display":"Short Title","amount":null or number,"category":"🍔 Food|🚗 Travel|📚 Study|💊 Health|📦 Other"}`;
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:150,messages:[{role:'user',content:prompt}]})});
-    const d=await r.json();
-    const raw=d.content?.[0]?.text||'';
+    const raw = await callAI(prompt, 150);
+    if(!raw) return null;
     const m=raw.match(/\{[\s\S]*\}/);
     return m?JSON.parse(m[0]):null;
   }catch(e){return null}
@@ -682,10 +699,10 @@ async function runAnalysis(){
   document.getElementById('aiOut').innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)"><span class="dots"><span></span><span></span><span></span></span><p style="margin-top:14px;font-size:13px">AI tera data padh raha hai...</p></div>';
   const data=`ACTIVITIES:\n${logs.filter(l=>l.type==='activity').map(l=>`[${new Date(l.startTime).toLocaleString('en-IN')}] ${l.display} — ${l.duration}`).join('\n')}\n\nEXPENSES:\n${exps.map(e=>`[${new Date(e.time).toLocaleDateString('en-IN')}] ₹${e.amount} — ${e.text}`).join('\n')}\nTotal: ₹${exps.reduce((s,e)=>s+e.amount,0)}\n\nMISTAKES:\n${mist.map(m=>`[${new Date(m.time).toLocaleDateString('en-IN')}] ${m.text}`).join('\n')}`;
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:`Analyze ${S.userName||'my'} life data in Hinglish. Be specific and insightful.\n\n${data}\n\nProvide:\n1. 📊 PATTERNS\n2. ⏰ TIME ANALYSIS\n3. 💸 EXPENSE PATTERNS\n4. ❌ MISTAKE PATTERNS\n5. 💡 TOP 3 INSIGHTS\n6. 🎯 3 ACTIONABLE SUGGESTIONS`}]})});
-    const d=await r.json();
-    if(d.error)throw new Error(d.error.message);
-    let res=d.content[0].text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/^##?\s(.+)$/gm,'<h3>$1</h3>').replace(/\n\n/g,'</p><p>');
+    const analysisPrompt=`Analyze ${S.userName||'my'} life data in Hinglish. Be specific and insightful.\n\n${data}\n\nProvide:\n1. 📊 PATTERNS\n2. ⏰ TIME ANALYSIS\n3. 💸 EXPENSE PATTERNS\n4. ❌ MISTAKE PATTERNS\n5. 💡 TOP 3 INSIGHTS\n6. 🎯 3 ACTIONABLE SUGGESTIONS`;
+    const raw = await callAI(analysisPrompt, 1500);
+    if(!raw) throw new Error('No response from AI');
+    let res=raw.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/^##?\s(.+)$/gm,'<h3>$1</h3>').replace(/\n\n/g,'</p><p>');
     document.getElementById('aiOut').innerHTML=`<div class="ai-result"><p>${res}</p></div>`;
   }catch(e){document.getElementById('aiOut').innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div>${e.message}</div>`}
   btn.disabled=false;btn.innerHTML='🔍 AI SE ANALYSIS KARO';
@@ -795,16 +812,12 @@ Examples:
 "poha breakfast" → {"type":"meal","name":"Poha","calories":250,"protein":5,"carbs":42,"fat":5,"notes":"Breakfast"}
 "creatine 5g" → {"type":"supplement","name":"Creatine","calories":0,"protein":0,"carbs":0,"fat":0,"notes":"5g"}`;
 
-      const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:200,messages:[{role:'user',content:prompt}]})});
-      const d=await r.json();
-      if(d.error){showToast('API Error: '+d.error.message.slice(0,40));}
-      else{
-        const raw=d.content?.[0]?.text||'';
+      const raw = await callAI(prompt, 200);
+      if(raw){
         const m=raw.match(/\{[\s\S]*\}/);
         if(m){
           const apiResult=JSON.parse(m[0]);
-          // Only use API result if calories > 0
-          if(apiResult.calories>0) parsed=apiResult;
+          if(apiResult.calories>0||apiResult.type==='supplement') parsed=apiResult;
         }
       }
     }catch(e){parsed=null}
@@ -893,14 +906,16 @@ async function testAPI(){
   res.style.color='var(--accent)';
   res.textContent='🔄 API call ho rahi hai...';
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:20,messages:[{role:'user',content:'Reply with just: WORKING'}]})});
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'Reply with just: WORKING'}]}],generationConfig:{maxOutputTokens:10}})});
     const d=await r.json();
     if(d.error){
       res.style.background='rgba(192,57,43,0.15)';res.style.color='var(--danger)';
       res.textContent='❌ Error: '+d.error.message;
     } else {
+      const reply=d.candidates?.[0]?.content?.parts?.[0]?.text||'OK';
       res.style.background='rgba(90,154,106,0.15)';res.style.color='var(--green)';
-      res.textContent='✅ API sahi kaam kar rahi hai! Response: '+d.content[0].text;
+      res.textContent='✅ Gemini API sahi kaam kar rahi hai! Response: '+reply;
     }
   }catch(e){
     res.style.background='rgba(192,57,43,0.15)';res.style.color='var(--danger)';
