@@ -733,19 +733,19 @@ const NUTRITION_DB = {
 function fallbackNutrition(text){
   const t=text.toLowerCase();
   let cal=0, pro=0, carb=0, fat=0;
-  // Check quantity words
   const numMatch=t.match(/(\d+(?:\.\d+)?)\s*(?:g|gm|gram|grm)/);
-  const countMatch=t.match(/(\d+)\s+/);
-  const qty=numMatch?parseFloat(numMatch[1])/100:countMatch?parseInt(countMatch[1]):1;
+  const countMatch=t.match(/(\d+)/);
+  const qty=numMatch?parseFloat(numMatch[1])/100:countMatch?Math.min(parseInt(countMatch[1]),10):1;
 
   let found=false;
   for(const [key,val] of Object.entries(NUTRITION_DB)){
     if(t.includes(key)){
-      cal+=val.cal*qty; pro+=val.pro*qty; carb+=val.carb*qty; fat+=val.fat*qty;
+      const multiplier=key==='rice'&&numMatch?parseFloat(numMatch[1])/100:qty;
+      cal+=val.cal*multiplier; pro+=val.pro*multiplier; carb+=val.carb*multiplier; fat+=val.fat*multiplier;
       found=true;
-      break;
     }
   }
+  if(!found){cal=200;pro=5;carb=25;fat=8;}// generic estimate
   const isSupp=/protein|creatine|vitamin|bcaa|omega|whey|casein|supplement/i.test(t);
   return{
     type:isSupp?'supplement':'meal',
@@ -754,7 +754,7 @@ function fallbackNutrition(text){
     protein:Math.round(pro),
     carbs:Math.round(carb),
     fat:Math.round(fat),
-    notes:found?'Estimated':'Manual entry — calories not estimated'
+    notes:found?'Estimated':'Generic estimate'
   };
 }
 async function addFood(){
@@ -795,9 +795,16 @@ Examples:
 
       const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:200,messages:[{role:'user',content:prompt}]})});
       const d=await r.json();
-      const raw=d.content?.[0]?.text||'';
-      const m=raw.match(/\{[\s\S]*\}/);
-      if(m) parsed=JSON.parse(m[0]);
+      if(d.error){showToast('API Error: '+d.error.message.slice(0,40));}
+      else{
+        const raw=d.content?.[0]?.text||'';
+        const m=raw.match(/\{[\s\S]*\}/);
+        if(m){
+          const apiResult=JSON.parse(m[0]);
+          // Only use API result if calories > 0
+          if(apiResult.calories>0) parsed=apiResult;
+        }
+      }
     }catch(e){parsed=null}
   }
 
