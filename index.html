@@ -532,8 +532,8 @@ function renderStreak(){
   let h='<span class="s-lbl">14D</span>';
   for(let i=13;i>=0;i--){
     const d=new Date(Date.now()-i*86400000);
-    const ds=d.toISOString().split('T')[0];
-    const has=S.logs.some(l=>(l.startTime||l.time||'').startsWith(ds));
+    const ds=localDateStr(d);
+    const has=S.logs.some(l=>localDateStr(new Date(l.startTime||l.time))===ds);
     h+=`<div class="s-dot ${has?'on':''}">${has?'●':'·'}</div>`;
   }
   r.innerHTML=h;
@@ -543,19 +543,27 @@ function renderStreak(){
 const COLORS=['#d4a843','#e07a3a','#4a7fa0','#5a9a6a','#9a5a9a','#c0392b','#2980b9','#27ae60'];
 const cmap={};let cidx=0;
 function getC(n){const k=(n||'').toLowerCase();if(!cmap[k]){cmap[k]=COLORS[cidx%COLORS.length];cidx++}return cmap[k]}
+function localDateStr(date) {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
 function dayNav(d){dayDate=new Date(dayDate.getTime()+d*86400000);renderDay()}
 function renderDay(){
   const lbl=document.getElementById('dayLbl'),tl=document.getElementById('dayTl'),dr=document.getElementById('dayRunning');
   if(!lbl)return;
   lbl.textContent=dayDate.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-  const ds=dayDate.toISOString().split('T')[0];
+  const ds=localDateStr(dayDate);
   const now=new Date();
-  const isToday=ds===now.toISOString().split('T')[0];
+  const isToday=ds===localDateStr(now);
   if(S.running&&isToday){
     const since=new Date(S.running.startTime).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
     dr.innerHTML=`<div class="day-running-item"><div class="running-dot"></div><div><div class="running-text">⏳ ${S.running.display} chal raha hai</div><div class="running-since">Shuru: ${since}</div></div></div>`;
   }else{dr.innerHTML=''}
-  const acts=S.logs.filter(l=>l.type==='activity'&&(l.startTime||'').startsWith(ds));
+  const acts=S.logs.filter(l=>l.type==='activity'&&localDateStr(new Date(l.startTime))===ds);
   const nowM=isToday?now.getHours()*60+now.getMinutes():-1;
   let html='';
   for(let h=0;h<24;h++){
