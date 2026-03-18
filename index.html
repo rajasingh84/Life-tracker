@@ -466,9 +466,29 @@ async function addLog(){
     showToast('💸 ₹'+p.amount+' logged!');
 
   } else {
-    S.logs.unshift({id:Date.now(),type:'note',display:p.display||text,text,time:now.toISOString(),mood:curMood});
-    save(); renderFeed(); renderStreak();
-    showToast('Logged! ✅');
+    // Check if it looks like an activity (could be start intent)
+    const activityWords = ['study','studying','padhai','gym','workout','exercise','walk','walking','sleep','sleeping','reading','trading','work','working','phone','watching','eating','lunch','dinner','breakfast','coding','practice','meditation','yoga','running','swimming','gaming'];
+    const lowerText = text.toLowerCase();
+    const looksLikeActivity = activityWords.some(w => lowerText.includes(w));
+
+    if (looksLikeActivity) {
+      // Ask user what they want
+      const choice = confirm(`"${text}"\n\nStart karna hai? (OK = Start, Cancel = Sirf Note)`);
+      if (choice) {
+        // Treat as start
+        S.running = {id:Date.now(),activity:p.activity||text,display:p.display||text,startTime:now.toISOString(),mood:curMood,rawText:text};
+        save(); renderBanner();
+        showToast('▶ '+(p.display||text)+' shuru!');
+      } else {
+        S.logs.unshift({id:Date.now(),type:'note',display:p.display||text,text,time:now.toISOString(),mood:curMood});
+        save(); renderFeed(); renderStreak();
+        showToast('Note logged! ✅');
+      }
+    } else {
+      S.logs.unshift({id:Date.now(),type:'note',display:p.display||text,text,time:now.toISOString(),mood:curMood});
+      save(); renderFeed(); renderStreak();
+      showToast('Logged! ✅');
+    }
   }
 
   btn.innerHTML='↑'; btn.disabled=false;
