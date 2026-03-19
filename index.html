@@ -159,7 +159,31 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 .dlb span:first-child{font-size:18px}
 .dlb:active{background:var(--acc);color:var(--bg);border-color:var(--acc)}
 
-/* MODAL */
+/* TASK OVERLAY */
+.task-ovr{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;display:none;align-items:flex-end;justify-content:center}
+.task-ovr.on{display:flex}
+.task-sht{background:var(--bg2);border-radius:20px 20px 0 0;border:1px solid var(--bor);border-bottom:none;width:100%;max-width:500px;max-height:90vh;display:flex;flex-direction:column;animation:su 0.3s ease}
+.task-hdr{padding:16px 16px 8px;flex-shrink:0}
+.task-hdl{width:40px;height:4px;background:var(--bor);border-radius:2px;margin:0 auto 14px}
+.task-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:12px}
+.task-inp-row{display:flex;gap:8px}
+.task-inp{flex:1;background:var(--sur);border:1px solid var(--bor);border-radius:var(--R);padding:10px 12px;color:var(--txt);font-family:'DM Mono',monospace;font-size:13px;outline:none}
+.task-inp:focus{border-color:var(--acc)}
+.task-inp::placeholder{color:var(--mut)}
+.task-add{padding:10px 16px;background:var(--acc);border:none;border-radius:var(--R);color:var(--bg);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.task-body{overflow-y:auto;padding:0 16px 20px;flex:1}
+.task-sec{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:1px;padding:10px 0 6px}
+.task-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--bor);border-radius:var(--R);margin-bottom:6px;transition:opacity 0.2s}
+.task-item.done{opacity:0.5}
+.task-cb{width:20px;height:20px;border-radius:6px;border:2px solid var(--bor);background:none;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:1px;transition:all 0.15s}
+.task-cb.done{background:var(--grn);border-color:var(--grn);color:#fff}
+.task-info{flex:1}
+.task-txt{font-size:13px;color:var(--txt);line-height:1.4}
+.task-txt.done{text-decoration:line-through;color:var(--mut)}
+.task-date{font-size:10px;color:var(--mut);margin-top:3px}
+.task-del{background:none;border:none;color:var(--bor);font-size:13px;cursor:pointer;padding:2px 4px;flex-shrink:0}
+.task-del:active{color:var(--red)}
+.task-empty{text-align:center;padding:20px;color:var(--mut);font-size:12px}
 .ovr{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;display:none;align-items:flex-end;justify-content:center}
 .ovr.on{display:flex}
 .sht{background:var(--bg2);border-radius:20px 20px 0 0;border:1px solid var(--bor);border-bottom:none;width:100%;max-width:500px;padding:20px;max-height:85vh;overflow-y:auto;animation:su 0.3s ease}
@@ -196,7 +220,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 <!-- HEADER -->
 <div class="hdr">
   <div class="hdr-title">LIFE<span id="hDate"></span></div>
-  <button class="gear" onclick="openSet()">⚙️</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="gear" onclick="openTask()" id="taskBtn" title="Tasks">✅</button>
+    <button class="gear" onclick="openSet()">⚙️</button>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -303,6 +330,26 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
   <button class="tb" onclick="goTab('analysis',this)"><span class="ic">📊</span>ANALYSIS</button>
 </div>
 
+<!-- TASK OVERLAY -->
+<div class="task-ovr" id="taskOvr" onclick="closeTaskOvr(event)">
+  <div class="task-sht">
+    <div class="task-hdr">
+      <div class="task-hdl"></div>
+      <div class="task-title">✅ Tasks</div>
+      <div class="task-inp-row">
+        <input type="text" class="task-inp" id="taskInp" placeholder="Nayi task likho..." onkeydown="if(event.key==='Enter')addTask()">
+        <button class="task-add" onclick="addTask()">+ ADD</button>
+      </div>
+    </div>
+    <div class="task-body">
+      <div class="task-sec">⏳ PENDING</div>
+      <div id="pendingList"></div>
+      <div class="task-sec">✅ COMPLETED</div>
+      <div id="doneList"></div>
+    </div>
+  </div>
+</div>
+
 <!-- SETTINGS -->
 <div class="ovr" id="setOvr" onclick="closeSetOvr(event)">
   <div class="sht">
@@ -333,7 +380,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 <script>
 // ===== STATE =====
 let S={
-  logs:[],running:null,expenses:[],mistakes:[],foods:[],
+  logs:[],running:null,expenses:[],mistakes:[],foods:[],tasks:[],
   shortcuts:['chai ☕','gym 💪','study 📚','trading 📈','walk 🚶','sleep 😴'],
   apiKey:'',userName:'',calorieGoal:2000
 };
@@ -845,7 +892,7 @@ function saveSet(){
   S.calorieGoal=parseInt(document.getElementById('calInp').value)||2000;
   save();document.getElementById('setOvr').classList.remove('on');toast('Settings save! ✅');
 }
-function clearAll(){if(confirm('Pakka? Saara data delete?')){S.logs=[];S.expenses=[];S.mistakes=[];S.running=null;S.foods=[];save();renderAll();document.getElementById('setOvr').classList.remove('on');toast('Data clear ho gaya')}}
+function clearAll(){if(confirm('Pakka? Saara data delete?')){S.logs=[];S.expenses=[];S.mistakes=[];S.running=null;S.foods=[];S.tasks=[];save();renderAll();document.getElementById('setOvr').classList.remove('on');toast('Data clear ho gaya')}}
 
 // ===== API TEST =====
 async function testAPI(){
@@ -862,6 +909,72 @@ async function testAPI(){
     else{res.style.background='rgba(90,154,106,0.15)';res.style.color='var(--grn)';res.textContent='✅ API sahi kaam kar rahi hai!';}
   }catch(e){res.style.background='rgba(192,57,43,0.15)';res.style.color='var(--red)';res.textContent='❌ '+e.message;}
   document.getElementById('tBtn').textContent='🔌 API TEST KARO';
+}
+
+// ===== TASKS =====
+function openTask(){document.getElementById('taskOvr').classList.add('on');renderTasks()}
+function closeTaskOvr(e){if(e.target.id==='taskOvr')document.getElementById('taskOvr').classList.remove('on')}
+
+function addTask(){
+  const inp=document.getElementById('taskInp');
+  const text=inp.value.trim();
+  if(!text)return;
+  S.tasks.unshift({id:Date.now(),text,done:false,createdAt:new Date().toISOString(),doneAt:null});
+  save(); inp.value=''; renderTasks(); toast('Task add! ✅');
+}
+
+function toggleTask(id){
+  const t=S.tasks.find(x=>x.id===id);
+  if(!t)return;
+  t.done=!t.done;
+  t.doneAt=t.done?new Date().toISOString():null;
+  save(); renderTasks();
+}
+
+function delTask(id){
+  if(!confirm('Delete karna hai?'))return;
+  S.tasks=S.tasks.filter(x=>x.id!==id);
+  save(); renderTasks();
+}
+
+function renderTasks(){
+  const pending=S.tasks.filter(t=>!t.done);
+  const done=S.tasks.filter(t=>t.done);
+
+  const pEl=document.getElementById('pendingList');
+  const dEl=document.getElementById('doneList');
+
+  if(!pending.length) pEl.innerHTML='<div class="task-empty">Koi pending task nahi 🎉</div>';
+  else pEl.innerHTML=pending.map(t=>{
+    const dt=new Date(t.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+    return`<div class="task-item">
+      <button class="task-cb" onclick="toggleTask(${t.id})"></button>
+      <div class="task-info">
+        <div class="task-txt">${t.text}</div>
+        <div class="task-date">Added: ${dt}</div>
+      </div>
+      <button class="task-del" onclick="delTask(${t.id})">🗑</button>
+    </div>`;
+  }).join('');
+
+  if(!done.length) dEl.innerHTML='<div class="task-empty">Koi completed task nahi abhi</div>';
+  else dEl.innerHTML=done.map(t=>{
+    const dt=new Date(t.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+    const donedt=t.doneAt?new Date(t.doneAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'';
+    return`<div class="task-item done">
+      <button class="task-cb done" onclick="toggleTask(${t.id})">✓</button>
+      <div class="task-info">
+        <div class="task-txt done">${t.text}</div>
+        <div class="task-date">Added: ${dt}${donedt?' · Done: '+donedt:''}</div>
+      </div>
+      <button class="task-del" onclick="delTask(${t.id})">🗑</button>
+    </div>`;
+  }).join('');
+
+  // Update task button badge
+  const btn=document.getElementById('taskBtn');
+  if(pending.length>0) btn.textContent='✅ '+pending.length;
+  else btn.textContent='✅';
 }
 
 // ===== TOAST =====
