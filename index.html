@@ -323,6 +323,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 
 <!-- FOOD PAGE -->
 <div class="pg" id="pg-food">
+  <div class="dnav">
+    <button class="nbtn" onclick="foodNav(-1)">‹</button>
+    <div class="dlbl" id="foodDateLbl"></div>
+    <button class="nbtn" onclick="foodNav(1)">›</button>
+  </div>
   <div class="fcal">
     <div class="cbar-lbl"><span>🔥 Calories</span><span id="calTxt">0 / 2000 kcal</span></div>
     <div class="cbar"><div class="cbar-f" id="calBar" style="width:0%"></div></div>
@@ -331,12 +336,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
       <div class="ms"><div class="ms-v" id="carb">0g</div><div class="ms-l">Carbs</div></div>
       <div class="ms"><div class="ms-v" id="supp">0</div><div class="ms-l">Supplements</div></div>
     </div>
-    <div class="irow">
+    <div class="irow" id="foodInputRow">
       <textarea class="finp" id="finp" placeholder="3 egg... 2 roti dal... whey protein... alpha gpc tablet..." rows="1"></textarea>
       <button class="fadd" id="fadd" onclick="addFood()">+</button>
     </div>
   </div>
-  <div class="sec">AAJ KA FOOD LOG</div>
+  <div class="sec" id="foodSecLbl">AAJ KA FOOD LOG</div>
   <div style="padding:0 12px 12px" id="flist"></div>
 </div>
 
@@ -480,6 +485,7 @@ let S={
 };
 let curMood='';
 let dayDate=new Date(); dayDate.setHours(0,0,0,0);
+let foodDate=new Date(); foodDate.setHours(0,0,0,0);
 let charts={};
 
 // ===== INIT =====
@@ -504,6 +510,7 @@ function goTab(n,b){
   document.getElementById('pg-'+n).classList.add('on');
   b.classList.add('on');
   if(n==='day') renderDay();
+  if(n==='food') renderFood();
   if(n==='analysis') initCharts();
 }
 
@@ -819,21 +826,19 @@ async function addFood(){
   let parsed=null;
   if(S.apiKey){
     try{
-      const prompt=`You are a nutrition expert. Return ONLY valid JSON, no explanation.
+      const prompt=`You are a nutrition expert. Analyze this food/supplement entry and return ONLY valid JSON.
 
-Food entry: "${text}"
+Entry: "${text}"
 
-CRITICAL RULES:
-1. Calculate for the TOTAL QUANTITY mentioned — NOT per unit. Examples:
-   - "3 egg" → calories for ALL 3 eggs combined (3×70=210 kcal, 3×6=18g protein)
-   - "2 roti" → calories for BOTH rotis combined
-   - "100g chicken" → calories for 100g total
-   - "1 scoop whey" → calories for 1 scoop
-2. MEAL = actual food/drink. SUPPLEMENT = pill/tablet/capsule/powder/nootropic/vitamin/mineral/creatine (not protein powder)
-3. Supplement pills/tablets → calories = 0
+Identify:
+1. Is this a MEAL/FOOD (actual food or drink) → type = "meal"
+2. Is this a SUPPLEMENT (pill, tablet, capsule, powder, nootropic, vitamin, mineral, pre-workout, protein powder, creatine, etc) → type = "supplement"
 
-Return JSON (all numbers are TOTALS for the full entry):
-{"type":"meal or supplement","name":"clean name","calories":total_number,"protein":total_grams,"carbs":total_grams,"fat":total_grams,"fiber":total_grams,"notes":"e.g. 3 eggs total"}`;
+Calculate accurate macros based on standard nutritional databases.
+For supplements that are pills/capsules/tablets (not protein powder) → calories ≈ 0.
+
+Return JSON:
+{"type":"meal or supplement","name":"proper name","calories":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"notes":"serving info"}`;
       const raw=await callAI(prompt,300,true);
       if(raw){
         const m=raw.match(/\{[\s\S]*\}/);
@@ -854,9 +859,36 @@ Return JSON (all numbers are TOTALS for the full entry):
   toast(entry.type==='supplement'?'💊 '+entry.name+' logged!':'🥗 ~'+entry.calories+' kcal logged!');
 }
 
+function foodNav(d){
+  foodDate=new Date(foodDate.getTime()+d*86400000);
+  renderFood();
+}
 function renderFood(){
   const today=lDS(new Date());
-  const tf=S.foods.filter(f=>lDS(new Date(f.time))===today);
+  const ds=lDS(foodDate);
+  const isToday=ds===today;
+
+  // Update date label
+  const lbl=document.getElementById('foodDateLbl');
+  if(lbl) lbl.textContent=isToday?'Today — '+foodDate.toLocaleDateString('en-IN',{day:'numeric',month:'short'}):foodDate.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+
+  // Hide input on past days
+  const inp=document.getElementById('foodInputRow');
+  if(inp) inp.style.display=isToday?'flex':'none';
+
+  // Update section label
+  const secLbl=document.getElementById('foodSecLbl');
+  if(secLbl) secLbl.textContent=isToday?'AAJ KA FOOD LOG':foodDate.toLocaleDateString('en-IN',{day:'numeric',month:'short'})+' KA FOOD LOG';
+
+  // Disable future navigation
+  const pg=document.getElementById('pg-food');
+  if(pg){
+    const btns=pg.querySelectorAll('.nbtn');
+    if(btns[1]) btns[1].style.opacity=isToday?'0.3':'1';
+    if(btns[1]) btns[1].disabled=isToday;
+  }
+
+  const tf=S.foods.filter(f=>lDS(new Date(f.time))===ds);
   const tCal=tf.reduce((s,f)=>s+f.calories,0);
   const tPro=tf.reduce((s,f)=>s+f.protein,0);
   const tCarb=tf.reduce((s,f)=>s+f.carbs,0);
@@ -873,11 +905,14 @@ function renderFood(){
   document.getElementById('supp').textContent=sc;
 
   const list=document.getElementById('flist');
-  if(!tf.length){list.innerHTML='<div class="empty"><div class="ei">🥗</div>Aaj kuch nahi khaya<br>Upar likho kya khaya...</div>';return}
+  if(!tf.length){
+    list.innerHTML=`<div class="empty"><div class="ei">🥗</div>${isToday?'Aaj kuch nahi khaya<br>Upar likho kya khaya...':'Is din kuch log nahi kiya'}</div>`;
+    return;
+  }
   list.innerHTML=tf.map(f=>{
     const t=new Date(f.time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
     return`<div class="card ${f.type==='supplement'?'sup':'mea'}" style="margin-bottom:8px">
-      <button class="cdel" onclick="delFood(${f.id})">🗑</button>
+      ${isToday?`<button class="cdel" onclick="delFood(${f.id})">🗑</button>`:''}
       <div class="ctime">${t} <span class="ctag ${f.type}">${f.type==='supplement'?'SUPPLEMENT':'MEAL'}</span></div>
       <div class="ctitle">${f.name}</div>
       ${f.raw!==f.name?`<div class="craw">${f.raw}</div>`:''}
@@ -1296,11 +1331,11 @@ function openHabitDetail(id){
   const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DLBLS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  // endDate = today, startDate = 52 weeks back aligned to Sunday
+  // Start from 52 weeks ago, aligned to Sunday
   const endDate=new Date(); endDate.setHours(23,59,59,999);
   const startDate=new Date(endDate.getTime()-364*86400000);
-  startDate.setDate(startDate.getDate()-startDate.getDay()); // roll to Sunday
-  startDate.setHours(0,0,0,0);
+  // Roll back to nearest Sunday
+  startDate.setDate(startDate.getDate()-startDate.getDay());
 
   // Build week columns
   const weeks=[];
@@ -1309,7 +1344,7 @@ function openHabitDetail(id){
     const week=[];
     for(let d=0;d<7;d++){
       const ds=lDS(cur);
-      const inRange=cur.getTime()<=endDate.getTime();
+      const inRange=cur<=endDate;
       const v=inRange?(h.logs&&h.logs[ds]):null;
       const lvl=v===true||v===2?'l2':v===1?'l1':'';
       week.push(inRange?{ds,lvl,isToday:ds===today,month:cur.getMonth(),day:cur.getDate(),dayName:DLBLS[d]}:null);
@@ -1318,21 +1353,21 @@ function openHabitDetail(id){
     weeks.push(week);
   }
 
-  // Month labels — appear at the column where the 1st of that month falls
-  const CELL=13; // 12px + 1px gap
-  const YAXIS=27; // Y-axis width
-  let mRow=`<div style="display:flex;padding-left:${YAXIS}px;margin-bottom:3px">`;
+  // Month label row — only show month name when it changes
+  let mRow='<div style="display:flex;padding-left:28px;margin-bottom:3px">';
+  let lastM=-1;
   weeks.forEach(wk=>{
-    // Show month name if this week contains the 1st of any month
-    const newMonth=wk.find(c=>c&&c.day===1);
-    mRow+=`<div style="width:${CELL}px;flex-shrink:0;font-size:8px;color:var(--mut);font-family:'DM Mono',monospace;overflow:hidden">${newMonth?MONTHS[newMonth.month]:''}</div>`;
+    const first=wk.find(c=>c);
+    const m=first?first.month:-1;
+    mRow+=`<div style="width:13px;flex-shrink:0;font-size:8px;color:var(--mut);font-family:'DM Mono',monospace">${m!==lastM&&m>=0?MONTHS[m]:''}</div>`;
+    if(m>=0) lastM=m;
   });
   mRow+='</div>';
 
   // Grid
-  let grid='<div style="display:flex;gap:0">';
-  // Y-axis labels
-  grid+=`<div style="display:flex;flex-direction:column;gap:1px;margin-right:3px;width:24px">`;
+  let grid='<div style="display:flex;gap:1px">';
+  // Y-axis: Mon Wed Fri labels
+  grid+='<div style="display:flex;flex-direction:column;gap:1px;margin-right:3px;width:24px">';
   ['','M','','W','','F',''].forEach(l=>{
     grid+=`<div style="height:12px;font-size:8px;color:var(--mut);font-family:'DM Mono',monospace;text-align:right;line-height:12px">${l}</div>`;
   });
@@ -1340,11 +1375,11 @@ function openHabitDetail(id){
 
   // Week columns
   weeks.forEach(wk=>{
-    grid+=`<div style="display:flex;flex-direction:column;gap:1px;margin-right:1px">`;
+    grid+='<div style="display:flex;flex-direction:column;gap:1px">';
     wk.forEach(c=>{
       if(c){
-        const title=`${c.dayName} ${c.day} ${MONTHS[c.month]}${c.lvl==='l2'?' ✓':c.lvl==='l1'?' ~':''}`;
-        grid+=`<div class="hm-cell ${c.lvl} ${c.isToday?'today':''}" title="${title}" style="width:12px;height:12px"></div>`;
+        const title=`${c.dayName}, ${MONTHS[c.month]} ${c.day}${c.lvl==='l2'?' ✓':c.lvl==='l1'?' ~':''}`;
+        grid+=`<div class="hm-cell ${c.lvl} ${c.isToday?'today':''}" title="${title}"></div>`;
       } else {
         grid+=`<div style="width:12px;height:12px"></div>`;
       }
