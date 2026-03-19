@@ -452,32 +452,40 @@ async function aiParse(text){
   const ctx=S.running
     ?`Currently running activity: "${S.running.activity}" (started at ${new Date(S.running.startTime).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})})`
     :'No activity currently running';
+  const now=new Date();
   const prompt=`You are a life tracker assistant. Parse this log entry and return ONLY valid JSON.
 
 Entry: "${text}"
 Context: ${ctx}
-Language: Could be English, Hindi, Hinglish, or mixed — understand all.
+Current time: ${now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})}
+Today's date: ${now.toLocaleDateString('en-IN')}
+Language: English, Hindi, Hinglish — understand all.
 
-Determine the intent:
-- Is the person STARTING an activity? → type = "start"
-- Is the person ENDING/completing an activity? → type = "end"  
-- Is it a money/expense entry? → type = "expense"
-- Is it just a note/observation? → type = "note"
+IMPORTANT: User may log PAST events retroactively. Examples:
+- "10 baje se 1 baje tak padha" = completed activity from 10:00 to 13:00 today
+- "subah 7 baje gym kiya 1 ghante" = completed activity at 7am for 1 hour
+- "kal raat 11 baje so gaya aaj 7 baje utha" = sleep from yesterday 11pm to today 7am
+- "watching reels from 10:00 to 1" = completed activity 10pm to 1am (or 10am to 1pm based on context)
 
-Use your understanding of language to detect intent — any language, any phrasing, any activity type.
-For "end": try to match the activity name with the currently running activity if context is provided.
-For "expense": extract the amount in numbers.
+Determine:
+- type: "start" (just starting now), "end" (ending current running activity), "completed" (past activity with known start+end), "expense", "note"
+- For "completed": extract startTime and endTime as ISO strings (use today's date if not specified)
+- For "start"/"end": activity and display name
+- For "expense": amount
 
 Return JSON:
 {
-  "type": "start|end|expense|note",
-  "activity": "clean english activity name (e.g. studying, sleeping, gym, trading, walking, reading)",
-  "display": "Short display title (2-3 words, capitalized)",
+  "type": "start|end|completed|expense|note",
+  "activity": "clean english name",
+  "display": "Short Title",
   "amount": null or number,
-  "category": "🍔 Food|🚗 Travel|📚 Study|💊 Health|📦 Other|💰 Finance|🎮 Entertainment"
+  "category": "🍔 Food|🚗 Travel|📚 Study|💊 Health|📦 Other|💰 Finance|🎮 Entertainment",
+  "startTime": null or "ISO datetime string",
+  "endTime": null or "ISO datetime string",
+  "duration": null or "Xh Ym"
 }`;
   try{
-    const raw = await callAI(prompt, 200);
+    const raw = await callAI(prompt, 300);
     if(!raw) return null;
     const m=raw.match(/\{[\s\S]*\}/);
     return m?JSON.parse(m[0]):null;
@@ -516,15 +524,25 @@ async function addLog(){
   if(!p) p=fbParse(text);
 
   if(p.type==='start'){
-    // Store as running — do NOT add to log
     S.running={id:Date.now(),activity:p.activity||text,display:p.display||text,startTime:now.toISOString(),mood:curMood,rawText:text};
-    save();
-    renderBanner();
+    save(); renderBanner();
     showToast('▶ '+(p.display||p.activity)+' shuru!');
+
+  } else if(p.type==='completed'){
+    // Past activity — directly log with given times
+    const sT=p.startTime?new Date(p.startTime):now;
+    const eT=p.endTime?new Date(p.endTime):now;
+    const diff=eT-sT;
+    const tm=Math.floor(Math.abs(diff)/60000);
+    const h=Math.floor(tm/60), m=tm%60;
+    const dur=p.duration||(h>0?`${h}h ${m}m`:`${m}m`);
+    const entry={id:Date.now(),type:'activity',display:p.display||p.activity||text,activity:p.activity||text,startTime:sT.toISOString(),endTime:eT.toISOString(),duration:dur,mood:curMood,rawStart:text,rawEnd:text};
+    S.logs.unshift(entry);
+    save(); renderFeed(); renderStreak();
+    showToast('✅ '+entry.display+' — '+dur+' (past log)');
 
   } else if(p.type==='end'){
     if(S.running){
-      // Calculate and create ONE combined entry
       const diff=now-new Date(S.running.startTime);
       const tm=Math.floor(diff/60000);
       const h=Math.floor(tm/60), m=tm%60;
@@ -535,43 +553,22 @@ async function addLog(){
       save(); renderBanner(); renderFeed(); renderStreak();
       showToast('✅ '+entry.display+' — '+dur);
     } else {
-      // No running activity, save as note
       S.logs.unshift({id:Date.now(),type:'note',display:text,text,time:now.toISOString(),mood:curMood});
       save(); renderFeed(); renderStreak();
       showToast('Logged (koi activity run nahi thi)');
     }
 
   } else if(p.type==='expense'&&p.amount>0){
-    const entry={id:Date.now(),type:'expense',display:p.display||text,text,time:now.toISOString(),amount:p.amount,category:p.category||catDetect(text),mood:curMood};
+    const entry={id:Date.now(),type:'expense',display:p.display||text,text,time:now.toISOString(),amount:p.amount,category:p.category||'📦 Other',mood:curMood};
     S.logs.unshift(entry);
     S.expenses.unshift({id:entry.id,text,amount:p.amount,time:now.toISOString(),category:entry.category});
     save(); renderFeed(); renderExp(); renderStreak();
     showToast('💸 ₹'+p.amount+' logged!');
 
   } else {
-    // Check if it looks like an activity (could be start intent)
-    const activityWords = ['study','studying','padhai','gym','workout','exercise','walk','walking','sleep','sleeping','reading','trading','work','working','phone','watching','eating','lunch','dinner','breakfast','coding','practice','meditation','yoga','running','swimming','gaming'];
-    const lowerText = text.toLowerCase();
-    const looksLikeActivity = activityWords.some(w => lowerText.includes(w));
-
-    if (looksLikeActivity) {
-      // Ask user what they want
-      const choice = confirm(`"${text}"\n\nStart karna hai? (OK = Start, Cancel = Sirf Note)`);
-      if (choice) {
-        // Treat as start
-        S.running = {id:Date.now(),activity:p.activity||text,display:p.display||text,startTime:now.toISOString(),mood:curMood,rawText:text};
-        save(); renderBanner();
-        showToast('▶ '+(p.display||text)+' shuru!');
-      } else {
-        S.logs.unshift({id:Date.now(),type:'note',display:p.display||text,text,time:now.toISOString(),mood:curMood});
-        save(); renderFeed(); renderStreak();
-        showToast('Note logged! ✅');
-      }
-    } else {
-      S.logs.unshift({id:Date.now(),type:'note',display:p.display||text,text,time:now.toISOString(),mood:curMood});
-      save(); renderFeed(); renderStreak();
-      showToast('Logged! ✅');
-    }
+    S.logs.unshift({id:Date.now(),type:'note',display:p.display||text,text,time:now.toISOString(),mood:curMood});
+    save(); renderFeed(); renderStreak();
+    showToast('Logged! ✅');
   }
 
   btn.innerHTML='↑'; btn.disabled=false;
@@ -646,30 +643,57 @@ function renderDay(){
     const since=new Date(S.running.startTime).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
     dr.innerHTML=`<div class="day-running-item"><div class="running-dot"></div><div><div class="running-text">⏳ ${S.running.display} chal raha hai</div><div class="running-since">Shuru: ${since}</div></div></div>`;
   }else{dr.innerHTML=''}
+
   const acts=S.logs.filter(l=>l.type==='activity'&&localDateStr(new Date(l.startTime))===ds);
   const nowM=isToday?now.getHours()*60+now.getMinutes():-1;
-  let html='';
+  const PX_PER_MIN=1.2; // pixels per minute
+  const HOUR_H=PX_PER_MIN*60; // 72px per hour
+
+  // Build hour labels
+  let hoursHtml='';
   for(let h=0;h<24;h++){
     const hl=h===0?'12am':h<12?`${h}am`:h===12?'12pm':`${h-12}pm`;
-    const hS=h*60,hE=(h+1)*60;
-    let nHtml='';
-    if(nowM>=hS&&nowM<hE){const p=((nowM-hS)/60)*44;nHtml=`<div class="now-dot" style="top:${p+4}px"></div><div class="now-line" style="top:${p+8}px"></div>`}
-    let bHtml='';
-    acts.forEach(a=>{
-      const aS=new Date(a.startTime);
-      const aSm=aS.getHours()*60+aS.getMinutes();
-      if(aSm>=hS&&aSm<hE){
-        const aE=new Date(a.endTime);
-        const c=getC(a.activity);
-        const st=aS.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
-        const et=aE.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
-        bHtml+=`<div class="tl-block" style="background:${c}99;border-left:3px solid ${c}"><span>${a.display}</span><span class="tl-bt">${st}→${et} · ${a.duration}</span></div>`;
-      }
-    });
-    html+=`<div class="tl-row"><div class="tl-hr">${hl}</div><div class="tl-line" style="position:relative">${nHtml}${bHtml}</div></div>`;
+    hoursHtml+=`<div style="height:${HOUR_H}px;display:flex;align-items:flex-start;padding-top:4px"><span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;width:42px;flex-shrink:0;text-align:right;padding-right:10px">${hl}</span><div style="flex:1;border-top:1px solid var(--border)"></div></div>`;
   }
-  tl.innerHTML=html;
-  if(isToday){setTimeout(()=>{const rows=tl.querySelectorAll('.tl-row');const scrollTo=Math.max(0,now.getHours()-2);rows[scrollTo]?.scrollIntoView({behavior:'smooth',block:'start'})},100)}
+
+  // Build activity blocks with absolute positioning
+  let blocksHtml='';
+  acts.forEach(a=>{
+    const aS=new Date(a.startTime);
+    const aE=new Date(a.endTime);
+    const startMin=aS.getHours()*60+aS.getMinutes();
+    const endMin=aE.getHours()*60+aE.getMinutes();
+    const top=startMin*PX_PER_MIN;
+    const height=Math.max((endMin-startMin)*PX_PER_MIN, 20);
+    const c=getC(a.activity);
+    const st=aS.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+    const et=aE.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+    blocksHtml+=`<div style="position:absolute;top:${top}px;left:52px;right:4px;height:${height}px;background:${c}cc;border-left:3px solid ${c};border-radius:6px;padding:3px 8px;overflow:hidden;box-sizing:border-box">
+      <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.display}</div>
+      ${height>30?`<div style="font-size:9px;color:rgba(255,255,255,0.8)">${st} → ${et} · ${a.duration}</div>`:''}
+    </div>`;
+  });
+
+  // Now line
+  let nowLineHtml='';
+  if(nowM>=0){
+    const nowTop=nowM*PX_PER_MIN;
+    nowLineHtml=`<div style="position:absolute;top:${nowTop}px;left:42px;right:0;height:2px;background:var(--danger);z-index:3"></div><div style="position:absolute;top:${nowTop-4}px;left:36px;width:10px;height:10px;background:var(--danger);border-radius:50%;z-index:3"></div>`;
+  }
+
+  tl.innerHTML=`<div style="position:relative;height:${24*HOUR_H}px">${hoursHtml}<div style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none">${blocksHtml}${nowLineHtml}</div></div>`;
+
+  // Scroll to current time or first activity
+  if(isToday){
+    setTimeout(()=>{
+      const scrollTo=Math.max(0,now.getHours()-2)*HOUR_H;
+      document.getElementById('page-day').scrollTop=scrollTo;
+    },100);
+  } else if(acts.length){
+    const firstAct=acts[0];
+    const scrollTo=Math.max(0,new Date(firstAct.startTime).getHours()-1)*HOUR_H;
+    setTimeout(()=>{document.getElementById('page-day').scrollTop=scrollTo},100);
+  }
 }
 
 // EXPENSE
