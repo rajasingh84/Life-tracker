@@ -910,7 +910,7 @@ function renderExp(){
 }
 
 // ===== MISTAKES =====
-function addMist(){const inp=document.getElementById('mta');const t=inp.value.trim();if(!t)return;S.mistakes.unshift({id:Date.now(),text:t,time:new Date().toISOString()});save();inp.value='';renderMist();toast('Mistake record! 📝')}
+function addMist(){const inp=document.getElementById('mta');const t=inp.value.trim();if(!t)return;S.mistakes.unshift({id:Date.now(),text:t,time:new Date().toISOString()});save();inp.value='';renderMist();renderRealityScore();toast('Mistake record! 📝')}
 function delMist(id){S.mistakes=S.mistakes.filter(m=>m.id!==id);save();renderMist()}
 function renderMist(){
   const l=document.getElementById('mlist');
@@ -1030,18 +1030,68 @@ function initCharts(){
 
 // ===== DOWNLOAD =====
 function dlCSV(){
-  let csv='Type,Date,Time,Name,Duration,Amount,Category,Mood\n';
-  S.logs.forEach(l=>{
-    if(l.type==='activity'){const d=new Date(l.startTime);csv+=`Activity,${d.toLocaleDateString('en-IN')},${d.toLocaleTimeString('en-IN')},"${l.display}","${l.duration}",,,${l.mood||''}\n`}
-    else if(l.type==='expense'){const d=new Date(l.time);csv+=`Expense,${d.toLocaleDateString('en-IN')},${d.toLocaleTimeString('en-IN')},,,"${l.amount}","${l.category}",${l.mood||''}\n`}
-    else{const d=new Date(l.time||l.startTime);csv+=`Note,${d.toLocaleDateString('en-IN')},${d.toLocaleTimeString('en-IN')},"${(l.text||l.display||'').replace(/"/g,'""')}",,,\n`}
-  });
-  if(S.foods.length){
-    csv+='\n\nFOOD LOG\nType,Date,Time,Name,Calories,Protein,Carbs,Fat,Fiber,Raw\n';
-    S.foods.forEach(f=>{const d=new Date(f.time);csv+=`${f.type},${d.toLocaleDateString('en-IN')},${d.toLocaleTimeString('en-IN')},"${f.name}",${f.calories},${f.protein},${f.carbs},${f.fat||0},${f.fiber||0},"${f.raw.replace(/"/g,'""')}"\n`});
-  }
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`life-${lDS(new Date())}.csv`;a.click();
-  toast('CSV download! ✅');
+  const q=s=>`"${String(s||'').replace(/"/g,'""')}"`;
+  const dt=d=>new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  const tm=d=>new Date(d).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+  const sep='\n\n';
+
+  let csv=`LIFE TRACKER EXPORT\nDate: ${new Date().toLocaleString('en-IN')}\nUser: ${S.userName||'Unknown'}\n`;
+
+  // SECTION 1: ACTIVITIES
+  csv+=`${sep}=== SECTION 1: ACTIVITIES ===\nType,Date,Time,Name,Duration,Mood\n`;
+  const acts=S.logs.filter(l=>l.type==='activity');
+  acts.length?acts.forEach(l=>csv+=`Activity,${dt(l.startTime)},${tm(l.startTime)},${q(l.display)},${q(l.duration)},${l.mood||''}\n`):csv+=`(none)\n`;
+  const notes=S.logs.filter(l=>l.type==='note');
+  if(notes.length){csv+=`\nDate,Time,Note\n`;notes.forEach(l=>csv+=`${dt(l.time||l.startTime)},${tm(l.time||l.startTime)},${q(l.text||l.display)}\n`);}
+
+  // SECTION 2: EXPENSES
+  csv+=`${sep}=== SECTION 2: EXPENSES ===\n`;
+  if(S.expenses?.length){
+    csv+=`Total: ₹${S.expenses.reduce((s,e)=>s+e.amount,0)}\n\nDate,Time,Amount,Category,Description\n`;
+    S.expenses.forEach(e=>csv+=`${dt(e.time)},${tm(e.time)},₹${e.amount},${q(e.category)},${q(e.text)}\n`);
+  }else csv+=`(none)\n`;
+
+  // SECTION 3: FOOD
+  csv+=`${sep}=== SECTION 3: FOOD & NUTRITION ===\n`;
+  if(S.foods?.length){
+    csv+=`Total Cal: ${S.foods.reduce((s,f)=>s+f.calories,0)} kcal | Protein: ${S.foods.reduce((s,f)=>s+f.protein,0)}g\n\nType,Date,Time,Name,Calories,Protein,Carbs,Fat,Fiber\n`;
+    S.foods.forEach(f=>csv+=`${f.type},${dt(f.time)},${tm(f.time)},${q(f.name)},${f.calories},${f.protein},${f.carbs},${f.fat||0},${f.fiber||0}\n`);
+  }else csv+=`(none)\n`;
+
+  // SECTION 4: HABITS
+  csv+=`${sep}=== SECTION 4: HABITS ===\nHabit,Emoji,Since,Days Done,Streak,Completion%\n`;
+  if(S.habits?.length){
+    S.habits.forEach(h=>{
+      const done=Object.values(h.logs||{}).filter(v=>v).length;
+      csv+=`${q(h.name)},${h.emoji},${dt(h.createdAt)},${done},${habitStreak(h)},${habitCompletion(h)}%\n`;
+    });
+    csv+=`\nDate,Habit,Level\n`;
+    S.habits.forEach(h=>Object.entries(h.logs||{}).sort().forEach(([date,v])=>{
+      const lbl=v===true||v===2?'Done':v===1?'Partial':'';
+      if(lbl) csv+=`${date},${q(h.name)},${lbl}\n`;
+    }));
+  }else csv+=`(none)\n`;
+
+  // SECTION 5: MISTAKES
+  csv+=`${sep}=== SECTION 5: MISTAKES ===\nDate,Time,Mistake\n`;
+  S.mistakes?.length?S.mistakes.forEach(m=>csv+=`${dt(m.time)},${tm(m.time)},${q(m.text)}\n`):csv+=`(none)\n`;
+
+  // SECTION 6: THOUGHTS
+  csv+=`${sep}=== SECTION 6: THOUGHTS ===\n`;
+  if(S.thoughts?.length){
+    const tc={};S.thoughts.forEach(t=>{tc[t.tag]=(tc[t.tag]||0)+1});
+    csv+=`Tags: ${Object.entries(tc).map(([k,v])=>`${k}:${v}`).join(', ')}\n\nDate,Time,Tag,Thought\n`;
+    S.thoughts.forEach(t=>csv+=`${dt(t.time)},${tm(t.time)},${t.tag},${q(t.text)}\n`);
+  }else csv+=`(none)\n`;
+
+  // SECTION 7: TASKS
+  csv+=`${sep}=== SECTION 7: TASKS ===\nStatus,Added,Done Date,Task\n`;
+  S.tasks?.length?S.tasks.forEach(t=>csv+=`${t.done?'Done':'Pending'},${dt(t.createdAt)},${t.doneAt?dt(t.doneAt):''},${q(t.text)}\n`):csv+=`(none)\n`;
+
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`life-full-${lDS(new Date())}.csv`;a.click();
+  toast('Full CSV download! ✅');
 }
 
 // ===== SETTINGS =====
@@ -1209,8 +1259,11 @@ function toggleHabit(id){
   const h=S.habits.find(x=>x.id===id);
   if(!h)return;
   const today=lDS(new Date());
-  if(h.logs[today]) delete h.logs[today];
-  else h.logs[today]=true;
+  if(h.logs[today]===true) h.logs[today]=2; // migration
+  const cur=h.logs[today]||0;
+  if(cur===0) h.logs[today]=1;
+  else if(cur===1) h.logs[today]=2;
+  else delete h.logs[today]; // 2→0 reset
   save();renderHabits();renderHabitScore();renderRealityScore();
 }
 
@@ -1399,7 +1452,7 @@ function saveThought(){
   if(!text)return;
   S.thoughts.unshift({id:Date.now(),text,tag:curThTag,time:new Date().toISOString()});
   save(); inp.value='';
-  renderThoughts(); renderThInsight(); toast('Thought saved! 💭');
+  renderThoughts(); renderThInsight(); renderRealityScore(); toast('Thought saved! 💭');
 }
 function delThought(id){
   S.thoughts=S.thoughts.filter(t=>t.id!==id);
