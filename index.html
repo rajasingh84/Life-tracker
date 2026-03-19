@@ -323,11 +323,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 
 <!-- FOOD PAGE -->
 <div class="pg" id="pg-food">
-  <div class="dnav">
-    <button class="nbtn" onclick="foodNav(-1)">‹</button>
-    <div class="dlbl" id="foodDateLbl"></div>
-    <button class="nbtn" onclick="foodNav(1)">›</button>
-  </div>
   <div class="fcal">
     <div class="cbar-lbl"><span>🔥 Calories</span><span id="calTxt">0 / 2000 kcal</span></div>
     <div class="cbar"><div class="cbar-f" id="calBar" style="width:0%"></div></div>
@@ -336,19 +331,24 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
       <div class="ms"><div class="ms-v" id="carb">0g</div><div class="ms-l">Carbs</div></div>
       <div class="ms"><div class="ms-v" id="supp">0</div><div class="ms-l">Supplements</div></div>
     </div>
-    <div class="irow" id="foodInputRow">
+    <div class="irow">
       <textarea class="finp" id="finp" placeholder="3 egg... 2 roti dal... whey protein... alpha gpc tablet..." rows="1"></textarea>
       <button class="fadd" id="fadd" onclick="addFood()">+</button>
     </div>
   </div>
-  <div class="sec" id="foodSecLbl">AAJ KA FOOD LOG</div>
+  <div class="sec">AAJ KA FOOD LOG</div>
   <div style="padding:0 12px 12px" id="flist"></div>
 </div>
 
 <!-- EXPENSE PAGE -->
 <div class="pg" id="pg-expense">
+  <div class="dnav">
+    <button class="nbtn" onclick="expNav(-1)">‹</button>
+    <div class="dlbl" id="expDateLbl"></div>
+    <button class="nbtn" id="expNextBtn" onclick="expNav(1)">›</button>
+  </div>
   <div class="esum" id="esum"></div>
-  <div class="sec">EXPENSE LOG</div>
+  <div class="sec" id="expSecLbl">EXPENSE LOG</div>
   <div style="padding:0 12px 12px" id="elist"></div>
 </div>
 
@@ -486,6 +486,7 @@ let S={
 let curMood='';
 let dayDate=new Date(); dayDate.setHours(0,0,0,0);
 let foodDate=new Date(); foodDate.setHours(0,0,0,0);
+let expDate=new Date(); expDate.setHours(0,0,0,0);
 let charts={};
 
 // ===== INIT =====
@@ -511,6 +512,7 @@ function goTab(n,b){
   b.classList.add('on');
   if(n==='day') renderDay();
   if(n==='food') renderFood();
+  if(n==='expense') renderExp();
   if(n==='analysis') initCharts();
 }
 
@@ -859,36 +861,9 @@ Return JSON:
   toast(entry.type==='supplement'?'💊 '+entry.name+' logged!':'🥗 ~'+entry.calories+' kcal logged!');
 }
 
-function foodNav(d){
-  foodDate=new Date(foodDate.getTime()+d*86400000);
-  renderFood();
-}
 function renderFood(){
   const today=lDS(new Date());
-  const ds=lDS(foodDate);
-  const isToday=ds===today;
-
-  // Update date label
-  const lbl=document.getElementById('foodDateLbl');
-  if(lbl) lbl.textContent=isToday?'Today — '+foodDate.toLocaleDateString('en-IN',{day:'numeric',month:'short'}):foodDate.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-
-  // Hide input on past days
-  const inp=document.getElementById('foodInputRow');
-  if(inp) inp.style.display=isToday?'flex':'none';
-
-  // Update section label
-  const secLbl=document.getElementById('foodSecLbl');
-  if(secLbl) secLbl.textContent=isToday?'AAJ KA FOOD LOG':foodDate.toLocaleDateString('en-IN',{day:'numeric',month:'short'})+' KA FOOD LOG';
-
-  // Disable future navigation
-  const pg=document.getElementById('pg-food');
-  if(pg){
-    const btns=pg.querySelectorAll('.nbtn');
-    if(btns[1]) btns[1].style.opacity=isToday?'0.3':'1';
-    if(btns[1]) btns[1].disabled=isToday;
-  }
-
-  const tf=S.foods.filter(f=>lDS(new Date(f.time))===ds);
+  const tf=S.foods.filter(f=>lDS(new Date(f.time))===today);
   const tCal=tf.reduce((s,f)=>s+f.calories,0);
   const tPro=tf.reduce((s,f)=>s+f.protein,0);
   const tCarb=tf.reduce((s,f)=>s+f.carbs,0);
@@ -905,14 +880,11 @@ function renderFood(){
   document.getElementById('supp').textContent=sc;
 
   const list=document.getElementById('flist');
-  if(!tf.length){
-    list.innerHTML=`<div class="empty"><div class="ei">🥗</div>${isToday?'Aaj kuch nahi khaya<br>Upar likho kya khaya...':'Is din kuch log nahi kiya'}</div>`;
-    return;
-  }
+  if(!tf.length){list.innerHTML='<div class="empty"><div class="ei">🥗</div>Aaj kuch nahi khaya<br>Upar likho kya khaya...</div>';return}
   list.innerHTML=tf.map(f=>{
     const t=new Date(f.time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
     return`<div class="card ${f.type==='supplement'?'sup':'mea'}" style="margin-bottom:8px">
-      ${isToday?`<button class="cdel" onclick="delFood(${f.id})">🗑</button>`:''}
+      <button class="cdel" onclick="delFood(${f.id})">🗑</button>
       <div class="ctime">${t} <span class="ctag ${f.type}">${f.type==='supplement'?'SUPPLEMENT':'MEAL'}</span></div>
       <div class="ctitle">${f.name}</div>
       ${f.raw!==f.name?`<div class="craw">${f.raw}</div>`:''}
@@ -929,19 +901,50 @@ function renderFood(){
 function delFood(id){if(!confirm('Delete?'))return;S.foods=S.foods.filter(f=>f.id!==id);save();renderFood()}
 
 // ===== EXPENSE =====
+function expNav(d){
+  expDate=new Date(expDate.getTime()+d*86400000);
+  renderExp();
+}
 function renderExp(){
   const list=document.getElementById('elist'),sum=document.getElementById('esum');
-  if(!S.expenses.length){
-    sum.innerHTML='<div class="es"><div class="es-v">₹0</div><div class="es-l">Aaj</div></div><div class="es"><div class="es-v">₹0</div><div class="es-l">Hafte</div></div>';
-    list.innerHTML='<div class="empty"><div class="ei">💸</div>Koi expense nahi<br>Log mein ₹ amount likho</div>';return;
-  }
-  const today=lDS(new Date()),week=Date.now()-7*86400000;
-  const tA=S.expenses.filter(e=>lDS(new Date(e.time))===today).reduce((s,e)=>s+e.amount,0);
+  if(!list||!sum) return;
+  const today=lDS(new Date());
+  const ds=lDS(expDate);
+  const isToday=ds===today;
+
+  // Date label
+  const lbl=document.getElementById('expDateLbl');
+  if(lbl) lbl.textContent=isToday?'Today — '+expDate.toLocaleDateString('en-IN',{day:'numeric',month:'short'}):expDate.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+
+  // Disable future arrow
+  const nextBtn=document.getElementById('expNextBtn');
+  if(nextBtn){nextBtn.style.opacity=isToday?'0.3':'1';nextBtn.disabled=isToday;}
+
+  // Section label
+  const secLbl=document.getElementById('expSecLbl');
+  if(secLbl) secLbl.textContent=isToday?'AAJ KE EXPENSES':expDate.toLocaleDateString('en-IN',{day:'numeric',month:'short'})+' KE EXPENSES';
+
+  // Filter for selected day
+  const dayExp=S.expenses.filter(e=>lDS(new Date(e.time))===ds);
+  const dayTotal=dayExp.reduce((s,e)=>s+e.amount,0);
+
+  // Summary stats (always show overall context)
+  const week=Date.now()-7*86400000;
   const wA=S.expenses.filter(e=>new Date(e.time)>week).reduce((s,e)=>s+e.amount,0);
   const tot=S.expenses.reduce((s,e)=>s+e.amount,0);
-  sum.innerHTML=`<div class="es"><div class="es-v">₹${tA}</div><div class="es-l">Aaj</div></div><div class="es"><div class="es-v">₹${wA}</div><div class="es-l">Hafte</div></div><div class="es"><div class="es-v">${S.expenses.length}</div><div class="es-l">Entries</div></div><div class="es"><div class="es-v">₹${tot}</div><div class="es-l">Total</div></div>`;
-  list.innerHTML=S.expenses.map(e=>{
-    const t=new Date(e.time).toLocaleDateString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});
+
+  sum.innerHTML=`
+    <div class="es"><div class="es-v">₹${dayTotal}</div><div class="es-l">${isToday?'Aaj':expDate.toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div></div>
+    <div class="es"><div class="es-v">₹${wA}</div><div class="es-l">7 Days</div></div>
+    <div class="es"><div class="es-v">${dayExp.length}</div><div class="es-l">Entries</div></div>
+    <div class="es"><div class="es-v">₹${tot}</div><div class="es-l">All Time</div></div>`;
+
+  if(!dayExp.length){
+    list.innerHTML=`<div class="empty"><div class="ei">💸</div>${isToday?'Aaj koi expense nahi<br>Log mein ₹ amount likho':'Is din koi expense nahi tha'}</div>`;
+    return;
+  }
+  list.innerHTML=dayExp.map(e=>{
+    const t=new Date(e.time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
     return`<div class="ei-item"><div><div>${e.text}</div><div style="font-size:10px;color:var(--mut);margin-top:2px">${t}</div><span class="ei-cat">${e.category}</span></div><div class="ei-amt">₹${e.amount}</div></div>`;
   }).join('');
 }
