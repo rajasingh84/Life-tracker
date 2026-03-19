@@ -551,16 +551,15 @@ function renderBanner(){
 function cancelRun(){if(!confirm('Cancel karna hai?'))return;S.running=null;save();renderBanner();toast('Cancelled')}
 
 // ===== GEMINI API =====
-async function callAI(prompt,maxTok=500){
+async function callAI(prompt,maxTok=500,jsonMode=false){
   if(!S.apiKey) return null;
   const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${S.apiKey}`;
+  const config={maxOutputTokens:maxTok,temperature:jsonMode?0.1:0.7};
+  if(jsonMode) config.responseMimeType='application/json';
   const res=await fetch(url,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      contents:[{parts:[{text:prompt}]}],
-      generationConfig:{maxOutputTokens:maxTok,temperature:0.1,responseMimeType:'application/json'}
-    })
+    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:config})
   });
   const d=await res.json();
   if(d.error) throw new Error(d.error.message);
@@ -602,7 +601,7 @@ Return JSON:
   "duration": null or "Xh Ym"
 }`;
   try{
-    const raw=await callAI(prompt,300);
+    const raw=await callAI(prompt,300,true);
     if(!raw) return null;
     const m=raw.match(/\{[\s\S]*\}/);
     return m?JSON.parse(m[0]):null;
@@ -833,7 +832,7 @@ For supplements that are pills/capsules/tablets (not protein powder) → calorie
 
 Return JSON:
 {"type":"meal or supplement","name":"proper name","calories":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"notes":"serving info"}`;
-      const raw=await callAI(prompt,300);
+      const raw=await callAI(prompt,300,true);
       if(raw){
         const m=raw.match(/\{[\s\S]*\}/);
         if(m) parsed=JSON.parse(m[0]);
