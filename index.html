@@ -32,6 +32,84 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 .tb::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:var(--acc);border-radius:2px 2px 0 0;opacity:0;transition:opacity 0.2s}
 .tb.on::after{opacity:1}
 
+/* HABIT PAGE */
+.h-score{margin:12px;background:var(--bg2);border:1px solid var(--bor);border-radius:var(--R);padding:14px;display:flex;align-items:center;justify-content:space-between}
+.h-score-left .h-score-val{font-family:'Syne',sans-serif;font-size:32px;font-weight:800}
+.h-score-left .h-score-lbl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}
+.h-score-right{font-size:28px}
+.h-add-row{padding:0 12px 10px;display:flex;gap:8px}
+.h-emoji-inp{width:48px;background:var(--sur);border:1px solid var(--bor);border-radius:var(--R);padding:8px;color:var(--txt);font-size:20px;text-align:center;outline:none}
+.h-name-inp{flex:1;background:var(--sur);border:1px solid var(--bor);border-radius:var(--R);padding:10px 12px;color:var(--txt);font-family:'DM Mono',monospace;font-size:13px;outline:none}
+.h-name-inp:focus{border-color:var(--acc)}
+.h-name-inp::placeholder{color:var(--mut)}
+.h-add-btn{padding:10px 14px;background:var(--acc);border:none;border-radius:var(--R);color:var(--bg);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.habit-grid{padding:0 12px 16px;display:flex;flex-direction:column;gap:8px}
+.habit-row{background:var(--bg2);border:1px solid var(--bor);border-radius:var(--R);padding:12px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color 0.2s}
+.habit-row.miss{border-color:rgba(192,57,43,0.4);background:rgba(192,57,43,0.05)}
+.habit-row.done-today{border-color:rgba(90,154,106,0.4)}
+.habit-emoji{font-size:24px;flex-shrink:0}
+.habit-info{flex:1;min-width:0}
+.habit-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.habit-streak{font-size:10px;color:var(--mut);margin-top:2px}
+.habit-check{width:32px;height:32px;border-radius:10px;border:2px solid var(--bor);background:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s}
+.habit-check.done{background:var(--grn);border-color:var(--grn);color:#fff}
+.habit-check.miss{border-color:var(--red)}
+
+/* HABIT DETAIL MODAL */
+.hd-ovr{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:998;display:none;align-items:flex-end;justify-content:center}
+.hd-ovr.on{display:flex}
+.hd-sht{background:var(--bg2);border-radius:20px 20px 0 0;border:1px solid var(--bor);border-bottom:none;width:100%;max-width:500px;height:92vh;overflow-y:auto;animation:su 0.3s ease;padding:16px}
+.hd-hdl{width:40px;height:4px;background:var(--bor);border-radius:2px;margin:0 auto 14px}
+.hd-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.hd-emoji{font-size:32px}
+.hd-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:800}
+.hd-since{font-size:11px;color:var(--mut);margin-top:2px}
+.hd-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.hd-stat{background:var(--sur);border-radius:10px;padding:10px;text-align:center}
+.hd-stat-v{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--acc)}
+.hd-stat-l{font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}
+.heatmap-wrap{margin-bottom:16px}
+.heatmap-lbl{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.heatmap{display:flex;flex-wrap:wrap;gap:2px}
+.hm-cell{width:11px;height:11px;border-radius:2px;background:var(--sur);border:1px solid var(--bor);cursor:default;transition:transform 0.1s}
+.hm-cell.done{background:var(--grn);border-color:var(--grn)}
+.hm-cell.today{outline:2px solid var(--acc);outline-offset:1px}
+.hd-del{margin-top:12px;width:100%;padding:10px;background:rgba(192,57,43,0.12);border:1px solid rgba(192,57,43,0.25);border-radius:var(--R);color:var(--red);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer}
+
+/* THOUGHT PAGE */
+.th-inp-area{padding:12px;background:var(--bg2);border-bottom:1px solid var(--bor)}
+.th-tags{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.th-tag{padding:5px 12px;border-radius:20px;border:1px solid var(--bor);background:var(--sur);font-size:11px;font-family:'Syne',sans-serif;font-weight:700;color:var(--mut);cursor:pointer;transition:all 0.15s;text-transform:uppercase;letter-spacing:0.5px}
+.th-tag.on{color:var(--bg)}
+.th-tag[data-t=distraction].on{background:#e07a3a;border-color:#e07a3a}
+.th-tag[data-t=focus].on{background:#5a9a6a;border-color:#5a9a6a}
+.th-tag[data-t=anxiety].on{background:#9a5a5a;border-color:#9a5a5a}
+.th-tag[data-t=random].on{background:#4a7fa0;border-color:#4a7fa0}
+.th-inp{width:100%;background:var(--sur);border:1px solid var(--bor);border-radius:var(--R);padding:10px 12px;color:var(--txt);font-family:'Instrument Serif',serif;font-size:14px;resize:none;outline:none;min-height:80px;line-height:1.6;transition:border-color 0.2s}
+.th-inp:focus{border-color:var(--acc)}
+.th-inp::placeholder{color:var(--mut);font-style:italic}
+.th-save{margin-top:8px;width:100%;padding:10px;background:var(--acc);border:none;border-radius:var(--R);color:var(--bg);font-family:'Syne',sans-serif;font-size:13px;font-weight:800;cursor:pointer}
+.th-insight{margin:10px 12px;padding:10px 14px;background:rgba(212,168,67,0.1);border:1px solid rgba(212,168,67,0.2);border-radius:var(--R);font-size:12px;color:var(--acc);font-family:'Syne',sans-serif;font-weight:700}
+.th-item{background:var(--bg2);border:1px solid var(--bor);border-radius:var(--R);padding:10px 12px;margin-bottom:8px;position:relative}
+.th-del{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--bor);font-size:13px;cursor:pointer;padding:2px 5px}
+.th-del:active{color:var(--red)}
+.th-time{font-size:10px;color:var(--mut);margin-bottom:4px}
+.th-text{font-family:'Instrument Serif',serif;font-size:14px;line-height:1.6}
+.th-badge{display:inline-block;margin-top:5px;padding:2px 8px;border-radius:8px;font-size:10px;font-family:'Syne',sans-serif;font-weight:700;text-transform:uppercase}
+.th-badge.distraction{background:rgba(224,122,58,0.2);color:var(--acc2)}
+.th-badge.focus{background:rgba(90,154,106,0.2);color:var(--grn)}
+.th-badge.anxiety{background:rgba(154,90,90,0.2);color:#c0756a}
+.th-badge.random{background:rgba(74,127,160,0.2);color:var(--blu)}
+
+/* REALITY SCORE */
+.reality-bar{margin:8px 12px;padding:10px 14px;border-radius:var(--R);border:1px solid var(--bor);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.reality-bar.great{background:rgba(90,154,106,0.1);border-color:rgba(90,154,106,0.3)}
+.reality-bar.avg{background:rgba(212,168,67,0.08);border-color:rgba(212,168,67,0.2)}
+.reality-bar.fail{background:rgba(192,57,43,0.08);border-color:rgba(192,57,43,0.25)}
+.rs-label{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--mut)}
+.rs-val{font-family:'Syne',sans-serif;font-size:20px;font-weight:800}
+.rs-msg{font-size:11px;color:var(--mut);margin-top:2px}
+
 .pg{position:fixed;top:var(--TH);left:0;right:0;bottom:var(--BH);overflow-y:auto;display:none;-webkit-overflow-scrolling:touch}
 .pg.on{display:block}
 
@@ -159,31 +237,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 .dlb span:first-child{font-size:18px}
 .dlb:active{background:var(--acc);color:var(--bg);border-color:var(--acc)}
 
-/* TASK OVERLAY */
-.task-ovr{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;display:none;align-items:flex-end;justify-content:center}
-.task-ovr.on{display:flex}
-.task-sht{background:var(--bg2);border-radius:20px 20px 0 0;border:1px solid var(--bor);border-bottom:none;width:100%;max-width:500px;max-height:90vh;display:flex;flex-direction:column;animation:su 0.3s ease}
-.task-hdr{padding:16px 16px 8px;flex-shrink:0}
-.task-hdl{width:40px;height:4px;background:var(--bor);border-radius:2px;margin:0 auto 14px}
-.task-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:12px}
-.task-inp-row{display:flex;gap:8px}
-.task-inp{flex:1;background:var(--sur);border:1px solid var(--bor);border-radius:var(--R);padding:10px 12px;color:var(--txt);font-family:'DM Mono',monospace;font-size:13px;outline:none}
-.task-inp:focus{border-color:var(--acc)}
-.task-inp::placeholder{color:var(--mut)}
-.task-add{padding:10px 16px;background:var(--acc);border:none;border-radius:var(--R);color:var(--bg);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
-.task-body{overflow-y:auto;padding:0 16px 20px;flex:1}
-.task-sec{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:1px;padding:10px 0 6px}
-.task-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--bor);border-radius:var(--R);margin-bottom:6px;transition:opacity 0.2s}
-.task-item.done{opacity:0.5}
-.task-cb{width:20px;height:20px;border-radius:6px;border:2px solid var(--bor);background:none;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:1px;transition:all 0.15s}
-.task-cb.done{background:var(--grn);border-color:var(--grn);color:#fff}
-.task-info{flex:1}
-.task-txt{font-size:13px;color:var(--txt);line-height:1.4}
-.task-txt.done{text-decoration:line-through;color:var(--mut)}
-.task-date{font-size:10px;color:var(--mut);margin-top:3px}
-.task-del{background:none;border:none;color:var(--bor);font-size:13px;cursor:pointer;padding:2px 4px;flex-shrink:0}
-.task-del:active{color:var(--red)}
-.task-empty{text-align:center;padding:20px;color:var(--mut);font-size:12px}
+/* MODAL */
 .ovr{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;display:none;align-items:flex-end;justify-content:center}
 .ovr.on{display:flex}
 .sht{background:var(--bg2);border-radius:20px 20px 0 0;border:1px solid var(--bor);border-bottom:none;width:100%;max-width:500px;padding:20px;max-height:85vh;overflow-y:auto;animation:su 0.3s ease}
@@ -220,8 +274,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 <!-- HEADER -->
 <div class="hdr">
   <div class="hdr-title">LIFE<span id="hDate"></span></div>
-  <div style="display:flex;gap:8px;align-items:center">
-    <button class="gear" onclick="openTask()" id="taskBtn" title="Tasks">✅</button>
+  <div style="display:flex;gap:6px;align-items:center">
+    <button class="gear" id="taskBtn" onclick="openPanel('task')" title="Tasks">✅</button>
+    <button class="gear" onclick="openPanel('habit')" title="Habits">🎯</button>
+    <button class="gear" onclick="openPanel('thought')" title="Thoughts">🧠</button>
     <button class="gear" onclick="openSet()">⚙️</button>
   </div>
 </div>
@@ -229,6 +285,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 
 <!-- LOG PAGE -->
 <div class="pg on" id="pg-log">
+  <div id="realityBar"></div>
   <div class="rbn" id="rbn">
     <div class="rdot"></div>
     <div style="flex:1"><div class="rtxt" id="rtxt"></div><div class="rsince" id="rsince"></div></div>
@@ -310,6 +367,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
     <button class="abtn" id="abtn" onclick="runAI()">🔍 AI SE ANALYSIS KARO</button>
   </div>
   <div id="aout"></div>
+  <div class="sec">WEEKLY REALITY CHECK</div>
+  <div id="weeklyReport"></div>
   <div class="sec">CHARTS</div>
   <div class="cwrap"><h4>Daily Activity (14 days)</h4><canvas id="ac" height="150"></canvas></div>
   <div class="cwrap"><h4>Expense Trend (14 days)</h4><canvas id="ec" height="150"></canvas></div>
@@ -317,6 +376,55 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
   <div class="dlrow">
     <button class="dlb" onclick="dlCSV()"><span>📄</span><span>CSV</span></button>
     <button class="dlb" onclick="window.print()"><span>🖨️</span><span>Print/PDF</span></button>
+  </div>
+</div>
+
+<!-- HABIT OVERLAY -->
+<div class="hd-ovr" id="habitOvr" onclick="closePanelOvr(event,'habitOvr')">
+  <div class="hd-sht">
+    <div class="hd-hdl"></div>
+    <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:12px">🎯 Habit Tracker</div>
+    <div id="habitScoreBar"></div>
+    <div class="h-add-row" style="margin-bottom:10px">
+      <input type="text" class="h-emoji-inp" id="hEmoji" placeholder="🎯" maxlength="2">
+      <input type="text" class="h-name-inp" id="hName" placeholder="Nayi habit... gym, study..." onkeydown="if(event.key==='Enter')addHabit()">
+      <button class="h-add-btn" onclick="addHabit()">+ ADD</button>
+    </div>
+    <div class="habit-grid" id="habitGrid"></div>
+  </div>
+</div>
+
+<!-- THOUGHT OVERLAY -->
+<div class="hd-ovr" id="thoughtOvr" onclick="closePanelOvr(event,'thoughtOvr')">
+  <div class="hd-sht">
+    <div class="hd-hdl"></div>
+    <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:12px">🧠 Thoughts</div>
+    <div class="th-tags" style="margin-bottom:8px">
+      <button class="th-tag" data-t="distraction" onclick="selTag(this)">😵 Distraction</button>
+      <button class="th-tag" data-t="focus" onclick="selTag(this)">🎯 Focus</button>
+      <button class="th-tag" data-t="anxiety" onclick="selTag(this)">😰 Anxiety</button>
+      <button class="th-tag on" data-t="random" onclick="selTag(this)">💭 Random</button>
+    </div>
+    <textarea class="th-inp" id="thInp" placeholder="Kya chal raha hai dimaag mein..."></textarea>
+    <button class="th-save" onclick="saveThought()" style="margin-bottom:12px">💭 SAVE THOUGHT</button>
+    <div id="thInsight"></div>
+    <div id="thList"></div>
+  </div>
+</div>
+
+<!-- TASK OVERLAY -->
+<div class="hd-ovr" id="taskOvr" onclick="closePanelOvr(event,'taskOvr')">
+  <div class="hd-sht">
+    <div class="hd-hdl"></div>
+    <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:12px">✅ Tasks</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input type="text" class="h-name-inp" id="taskInp" placeholder="Nayi task likho..." onkeydown="if(event.key==='Enter')addTask()">
+      <button class="h-add-btn" onclick="addTask()">+ ADD</button>
+    </div>
+    <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">⏳ PENDING</div>
+    <div id="pendingList"></div>
+    <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px">✅ COMPLETED</div>
+    <div id="doneList"></div>
   </div>
 </div>
 
@@ -330,24 +438,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
   <button class="tb" onclick="goTab('analysis',this)"><span class="ic">📊</span>ANALYSIS</button>
 </div>
 
-<!-- TASK OVERLAY -->
-<div class="task-ovr" id="taskOvr" onclick="closeTaskOvr(event)">
-  <div class="task-sht">
-    <div class="task-hdr">
-      <div class="task-hdl"></div>
-      <div class="task-title">✅ Tasks</div>
-      <div class="task-inp-row">
-        <input type="text" class="task-inp" id="taskInp" placeholder="Nayi task likho..." onkeydown="if(event.key==='Enter')addTask()">
-        <button class="task-add" onclick="addTask()">+ ADD</button>
-      </div>
-    </div>
-    <div class="task-body">
-      <div class="task-sec">⏳ PENDING</div>
-      <div id="pendingList"></div>
-      <div class="task-sec">✅ COMPLETED</div>
-      <div id="doneList"></div>
-    </div>
-  </div>
+<!-- HABIT DETAIL MODAL -->
+<div class="hd-ovr" id="hdOvr" onclick="closeHD(event)">
+  <div class="hd-sht" id="hdSht"></div>
 </div>
 
 <!-- SETTINGS -->
@@ -380,7 +473,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 <script>
 // ===== STATE =====
 let S={
-  logs:[],running:null,expenses:[],mistakes:[],foods:[],tasks:[],
+  logs:[],running:null,expenses:[],mistakes:[],foods:[],
+  habits:[],thoughts:[],
   shortcuts:['chai ☕','gym 💪','study 📚','trading 📈','walk 🚶','sleep 😴'],
   apiKey:'',userName:'',calorieGoal:2000
 };
@@ -390,7 +484,7 @@ let charts={};
 
 // ===== INIT =====
 function init(){
-  const s=localStorage.getItem('lt_v5');
+  const s=localStorage.getItem('lt_v6')||localStorage.getItem('lt_v5');
   if(s) S={...S,...JSON.parse(s)};
   document.getElementById('hDate').textContent=' · '+new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short'});
   const today=new Date().toISOString().split('T')[0];
@@ -398,9 +492,10 @@ function init(){
   document.getElementById('dfrom').value=week;
   document.getElementById('dto').value=today;
   renderAll();
+  startInactivityDetector();
 }
-function save(){localStorage.setItem('lt_v5',JSON.stringify(S))}
-function renderAll(){renderSc();renderStrk();renderBanner();renderFeed();renderFood();renderExp();renderMist()}
+function save(){localStorage.setItem('lt_v6',JSON.stringify(S))}
+function renderAll(){renderSc();renderStrk();renderBanner();renderFeed();renderFood();renderExp();renderMist();renderRealityScore()}
 
 // ===== TABS =====
 function goTab(n,b){
@@ -411,6 +506,14 @@ function goTab(n,b){
   if(n==='day') renderDay();
   if(n==='analysis') initCharts();
 }
+
+// ===== PANEL OVERLAYS (Task, Habit, Thought) =====
+function openPanel(type){
+  if(type==='task'){renderTasks();document.getElementById('taskOvr').classList.add('on')}
+  if(type==='habit'){renderHabits();renderHabitScore();document.getElementById('habitOvr').classList.add('on')}
+  if(type==='thought'){renderThoughts();renderThInsight();document.getElementById('thoughtOvr').classList.add('on')}
+}
+function closePanelOvr(e,id){if(e.target.id===id)document.getElementById(id).classList.remove('on')}
 
 // ===== MOOD =====
 function selM(b){
@@ -839,7 +942,11 @@ Total: ₹${exps.reduce((s,e)=>s+e.amount,0)}
 
 FOOD/NUTRITION:\n${fds.map(f=>`[${new Date(f.time).toLocaleDateString('en-IN')}] ${f.name} — ${f.calories}kcal, ${f.protein}g protein (${f.type})`).join('\n')||'None'}
 
-MISTAKES:\n${mist.map(m=>`[${new Date(m.time).toLocaleDateString('en-IN')}] ${m.text}`).join('\n')||'None'}`;
+MISTAKES:\n${mist.map(m=>`[${new Date(m.time).toLocaleDateString('en-IN')}] ${m.text}`).join('\n')||'None'}
+
+HABITS (last 7 days):\n${S.habits.map(h=>{const streak=habitStreak(h);const comp=habitCompletion(h);return`${h.emoji} ${h.name}: ${comp}% completion, ${streak} day streak`}).join('\n')||'None'}
+
+THOUGHTS:\n${S.thoughts.filter(t=>new Date(t.time)>=from&&new Date(t.time)<=to).map(t=>`[${new Date(t.time).toLocaleDateString('en-IN')}] [${t.tag}] ${t.text}`).join('\n')||'None'}`;
 
   try{
     const prompt=`Analyze ${S.userName||'my'} life data in Hinglish. Be specific, honest and insightful.\n\n${data}\n\nProvide:\n1. 📊 PATTERNS - Kya patterns dikh rahe hain?\n2. ⏰ TIME ANALYSIS - Kahan time ja raha hai?\n3. 💸 EXPENSE PATTERNS\n4. 🥗 NUTRITION INSIGHTS\n5. ❌ MISTAKE PATTERNS\n6. 💡 TOP 3 INSIGHTS\n7. 🎯 3 ACTIONABLE SUGGESTIONS`;
@@ -851,8 +958,44 @@ MISTAKES:\n${mist.map(m=>`[${new Date(m.time).toLocaleDateString('en-IN')}] ${m.
   btn.disabled=false;btn.innerHTML='🔍 AI SE ANALYSIS KARO';
 }
 
+// ===== WEEKLY REPORT =====
+function renderWeeklyReport(){
+  const el=document.getElementById('weeklyReport');
+  if(!el)return;
+  let productive=0,wasted=0;
+  for(let i=6;i>=0;i--){
+    const d=new Date(Date.now()-i*86400000);
+    const ds=lDS(d);
+    const hasActivity=S.logs.some(l=>lDS(new Date(l.startTime||l.time))===ds);
+    const hasMistake=S.mistakes.some(m=>lDS(new Date(m.time))===ds);
+    const habitsDone=S.habits.filter(h=>h.logs&&h.logs[ds]).length;
+    if(hasActivity||habitsDone>0) productive++;
+    else wasted++;
+  }
+  const productivePct=Math.round((productive/7)*100);
+  let msg='';
+  if(productivePct>=80) msg='🔥 Is hafte bahut productive the!';
+  else if(productivePct>=50) msg='😐 Kabhi kabhi motivated hote ho — consistent nahi ho.';
+  else msg='❌ Tum disciplined nahi ho. Bas kabhi kabhi motivated hote ho.';
+
+  el.innerHTML=`<div style="margin:0 12px 10px;background:var(--bg2);border:1px solid var(--bor);border-radius:var(--R);padding:14px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div style="text-align:center;background:rgba(90,154,106,0.1);border-radius:10px;padding:10px">
+        <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--grn)">${productive}</div>
+        <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Productive Days</div>
+      </div>
+      <div style="text-align:center;background:rgba(192,57,43,0.1);border-radius:10px;padding:10px">
+        <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--red)">${wasted}</div>
+        <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Wasted Days</div>
+      </div>
+    </div>
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--txt);line-height:1.5">${msg}</div>
+  </div>`;
+}
+
 // ===== CHARTS =====
 function initCharts(){
+  renderWeeklyReport();
   const labels=[],acts=[],exps=[];
   for(let i=13;i>=0;i--){
     const d=new Date(Date.now()-i*86400000),ds=lDS(d);
@@ -892,7 +1035,7 @@ function saveSet(){
   S.calorieGoal=parseInt(document.getElementById('calInp').value)||2000;
   save();document.getElementById('setOvr').classList.remove('on');toast('Settings save! ✅');
 }
-function clearAll(){if(confirm('Pakka? Saara data delete?')){S.logs=[];S.expenses=[];S.mistakes=[];S.running=null;S.foods=[];S.tasks=[];save();renderAll();document.getElementById('setOvr').classList.remove('on');toast('Data clear ho gaya')}}
+function clearAll(){if(confirm('Pakka? Saara data delete?')){S.logs=[];S.expenses=[];S.mistakes=[];S.running=null;S.foods=[];S.habits=[];S.thoughts=[];S.tasks=[];save();renderAll();document.getElementById('setOvr').classList.remove('on');toast('Data clear ho gaya')}}
 
 // ===== API TEST =====
 async function testAPI(){
@@ -911,73 +1054,289 @@ async function testAPI(){
   document.getElementById('tBtn').textContent='🔌 API TEST KARO';
 }
 
-// ===== TASKS =====
-function openTask(){document.getElementById('taskOvr').classList.add('on');renderTasks()}
-function closeTaskOvr(e){if(e.target.id==='taskOvr')document.getElementById('taskOvr').classList.remove('on')}
-
+// ===== TASK MANAGER =====
 function addTask(){
   const inp=document.getElementById('taskInp');
-  const text=inp.value.trim();
-  if(!text)return;
+  const text=inp.value.trim(); if(!text)return;
+  if(!S.tasks) S.tasks=[];
   S.tasks.unshift({id:Date.now(),text,done:false,createdAt:new Date().toISOString(),doneAt:null});
   save(); inp.value=''; renderTasks(); toast('Task add! ✅');
 }
-
 function toggleTask(id){
-  const t=S.tasks.find(x=>x.id===id);
-  if(!t)return;
-  t.done=!t.done;
-  t.doneAt=t.done?new Date().toISOString():null;
+  const t=S.tasks.find(x=>x.id===id); if(!t)return;
+  t.done=!t.done; t.doneAt=t.done?new Date().toISOString():null;
   save(); renderTasks();
 }
-
 function delTask(id){
-  if(!confirm('Delete karna hai?'))return;
+  if(!confirm('Delete?'))return;
   S.tasks=S.tasks.filter(x=>x.id!==id);
   save(); renderTasks();
 }
-
 function renderTasks(){
+  if(!S.tasks) S.tasks=[];
   const pending=S.tasks.filter(t=>!t.done);
   const done=S.tasks.filter(t=>t.done);
-
   const pEl=document.getElementById('pendingList');
   const dEl=document.getElementById('doneList');
-
-  if(!pending.length) pEl.innerHTML='<div class="task-empty">Koi pending task nahi 🎉</div>';
-  else pEl.innerHTML=pending.map(t=>{
+  if(!pEl||!dEl)return;
+  pEl.innerHTML=pending.length?pending.map(t=>{
     const dt=new Date(t.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-    return`<div class="task-item">
-      <button class="task-cb" onclick="toggleTask(${t.id})"></button>
-      <div class="task-info">
-        <div class="task-txt">${t.text}</div>
-        <div class="task-date">Added: ${dt}</div>
-      </div>
-      <button class="task-del" onclick="delTask(${t.id})">🗑</button>
+    return`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--bor);border-radius:var(--R);margin-bottom:6px">
+      <button onclick="toggleTask(${t.id})" style="width:22px;height:22px;border-radius:6px;border:2px solid var(--bor);background:none;cursor:pointer;flex-shrink:0;margin-top:1px;font-size:12px;display:flex;align-items:center;justify-content:center"></button>
+      <div style="flex:1"><div style="font-size:13px;color:var(--txt)">${t.text}</div><div style="font-size:10px;color:var(--mut);margin-top:2px">Added: ${dt}</div></div>
+      <button onclick="delTask(${t.id})" style="background:none;border:none;color:var(--bor);font-size:13px;cursor:pointer;padding:2px 5px">🗑</button>
     </div>`;
-  }).join('');
-
-  if(!done.length) dEl.innerHTML='<div class="task-empty">Koi completed task nahi abhi</div>';
-  else dEl.innerHTML=done.map(t=>{
+  }).join(''):'<div style="text-align:center;padding:16px;color:var(--mut);font-size:12px">Koi pending task nahi 🎉</div>';
+  dEl.innerHTML=done.length?done.map(t=>{
     const dt=new Date(t.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-    const donedt=t.doneAt?new Date(t.doneAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'';
-    return`<div class="task-item done">
-      <button class="task-cb done" onclick="toggleTask(${t.id})">✓</button>
-      <div class="task-info">
-        <div class="task-txt done">${t.text}</div>
-        <div class="task-date">Added: ${dt}${donedt?' · Done: '+donedt:''}</div>
-      </div>
-      <button class="task-del" onclick="delTask(${t.id})">🗑</button>
+    return`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--bor);border-radius:var(--R);margin-bottom:6px;opacity:0.5">
+      <button onclick="toggleTask(${t.id})" style="width:22px;height:22px;border-radius:6px;border:2px solid var(--grn);background:var(--grn);cursor:pointer;flex-shrink:0;margin-top:1px;font-size:12px;color:#fff;display:flex;align-items:center;justify-content:center">✓</button>
+      <div style="flex:1"><div style="font-size:13px;color:var(--mut);text-decoration:line-through">${t.text}</div><div style="font-size:10px;color:var(--mut);margin-top:2px">Added: ${dt}</div></div>
+      <button onclick="delTask(${t.id})" style="background:none;border:none;color:var(--bor);font-size:13px;cursor:pointer;padding:2px 5px">🗑</button>
     </div>`;
-  }).join('');
-
-  // Update task button badge
+  }).join(''):'<div style="text-align:center;padding:16px;color:var(--mut);font-size:12px">Koi completed task nahi</div>';
+  // Badge
   const btn=document.getElementById('taskBtn');
-  if(pending.length>0) btn.textContent='✅ '+pending.length;
-  else btn.textContent='✅';
+  if(btn) btn.textContent=pending.length>0?'✅'+pending.length:'✅';
+}
+
+// ===== REALITY SCORE =====
+function calcRealityScore(){
+  const today=lDS(new Date());
+  const completedHabits=S.habits.filter(h=>h.logs&&h.logs[today]).length;
+  const todayMistakes=S.mistakes.filter(m=>lDS(new Date(m.time))===today).length;
+  return (completedHabits*10)-(todayMistakes*5);
+}
+function renderRealityScore(){
+  const bar=document.getElementById('realityBar');
+  if(!bar)return;
+  const score=calcRealityScore();
+  const totalHabits=S.habits.length;
+  if(totalHabits===0&&S.mistakes.filter(m=>lDS(new Date(m.time))===lDS(new Date())).length===0){bar.innerHTML='';return}
+  let cls='avg',emoji='😐',msg='Average din hai';
+  if(score>=80){cls='great';emoji='🔥';msg='Aaj bahut productive ho!'}
+  else if(score<50){cls='fail';emoji='❌';msg='Aaj productive nahi the'}
+  bar.innerHTML=`<div class="reality-bar ${cls}">
+    <div><div class="rs-label">TODAY'S SCORE</div><div class="rs-msg">${msg}</div></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="rs-val" style="color:${cls==='great'?'var(--grn)':cls==='fail'?'var(--red)':'var(--acc)'}">${score}</div>
+      <div style="font-size:24px">${emoji}</div>
+    </div>
+  </div>`;
+}
+
+// ===== HABIT TRACKER =====
+function addHabit(){
+  const name=document.getElementById('hName').value.trim();
+  const emoji=document.getElementById('hEmoji').value.trim()||'🎯';
+  if(!name)return;
+  S.habits.push({id:Date.now(),name,emoji,type:'daily',logs:{},createdAt:new Date().toISOString()});
+  document.getElementById('hName').value='';
+  document.getElementById('hEmoji').value='';
+  save();renderHabits();renderHabitScore();toast('Habit add! ✅');
+}
+
+function toggleHabit(id){
+  const h=S.habits.find(x=>x.id===id);
+  if(!h)return;
+  const today=lDS(new Date());
+  if(h.logs[today]) delete h.logs[today];
+  else h.logs[today]=true;
+  save();renderHabits();renderHabitScore();renderRealityScore();
+}
+
+function habitStreak(h){
+  let streak=0;
+  const d=new Date(); d.setHours(0,0,0,0);
+  while(true){
+    const ds=lDS(d);
+    if(h.logs[ds]) streak++;
+    else break;
+    d.setDate(d.getDate()-1);
+  }
+  return streak;
+}
+function habitLongestStreak(h){
+  const keys=Object.keys(h.logs||{}).filter(k=>h.logs[k]).sort();
+  if(!keys.length)return 0;
+  let max=1,cur=1;
+  for(let i=1;i<keys.length;i++){
+    const prev=new Date(keys[i-1]),curr=new Date(keys[i]);
+    const diff=(curr-prev)/(1000*60*60*24);
+    if(diff===1){cur++;max=Math.max(max,cur);}else cur=1;
+  }
+  return max;
+}
+function habitCompletion(h){
+  const total=Object.keys(h.logs||{}).filter(k=>h.logs[k]).length;
+  const created=new Date(h.createdAt);
+  const days=Math.max(1,Math.ceil((Date.now()-created)/(1000*60*60*24)));
+  return Math.round((total/days)*100);
+}
+
+function renderHabits(){
+  const grid=document.getElementById('habitGrid');
+  if(!grid)return;
+  if(!S.habits.length){grid.innerHTML='<div class="empty"><div class="ei">🎯</div>Koi habit nahi<br>Upar add karo!</div>';return}
+  const today=lDS(new Date());
+  grid.innerHTML=S.habits.map(h=>{
+    const done=h.logs&&h.logs[today];
+    const streak=habitStreak(h);
+    const cls=done?'done-today':'miss';
+    return`<div class="habit-row ${cls}" onclick="openHabitDetail(${h.id})">
+      <div class="habit-emoji">${h.emoji}</div>
+      <div class="habit-info">
+        <div class="habit-name">${h.name}</div>
+        <div class="habit-streak">${done?'✅ Done today':'❌ Not done'} · 🔥 ${streak} day streak</div>
+      </div>
+      <button class="habit-check ${done?'done':''}" onclick="event.stopPropagation();toggleHabit(${h.id})">${done?'✓':''}</button>
+    </div>`;
+  }).join('');
+}
+
+function renderHabitScore(){
+  const bar=document.getElementById('habitScoreBar');
+  if(!bar||!S.habits.length)return;
+  const today=lDS(new Date());
+  const done=S.habits.filter(h=>h.logs&&h.logs[today]).length;
+  const total=S.habits.length;
+  const pct=Math.round((done/total)*100);
+  bar.innerHTML=`<div style="margin:10px 12px;background:var(--bg2);border:1px solid var(--bor);border-radius:var(--R);padding:12px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-bottom:6px">
+      <span style="font-family:'Syne',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Aaj ka Progress</span>
+      <span style="color:var(--acc);font-weight:700">${done}/${total} (${pct}%)</span>
+    </div>
+    <div style="height:8px;background:var(--sur);border-radius:4px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--grn),var(--acc));border-radius:4px;transition:width 0.4s"></div>
+    </div>
+  </div>`;
+}
+
+function openHabitDetail(id){
+  const h=S.habits.find(x=>x.id===id);
+  if(!h)return;
+  const streak=habitStreak(h);
+  const longest=habitLongestStreak(h);
+  const completion=habitCompletion(h);
+  const since=new Date(h.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  const today=lDS(new Date());
+
+  // Build 365-day heatmap
+  let heatmap='';
+  for(let i=364;i>=0;i--){
+    const d=new Date(Date.now()-i*86400000);
+    const ds=lDS(d);
+    const isDone=h.logs&&h.logs[ds];
+    const isToday=ds===today;
+    heatmap+=`<div class="hm-cell ${isDone?'done':''} ${isToday?'today':''}" title="${ds}"></div>`;
+  }
+
+  document.getElementById('hdSht').innerHTML=`
+    <div class="hd-hdl"></div>
+    <div class="hd-head">
+      <div class="hd-emoji">${h.emoji}</div>
+      <div><div class="hd-title">${h.name}</div><div class="hd-since">Since ${since}</div></div>
+    </div>
+    <div class="hd-stats">
+      <div class="hd-stat"><div class="hd-stat-v">${streak}</div><div class="hd-stat-l">Current Streak</div></div>
+      <div class="hd-stat"><div class="hd-stat-v">${longest}</div><div class="hd-stat-l">Best Streak</div></div>
+      <div class="hd-stat"><div class="hd-stat-v">${completion}%</div><div class="hd-stat-l">Completion</div></div>
+    </div>
+    <div class="heatmap-wrap">
+      <div class="heatmap-lbl">365 Day Heatmap</div>
+      <div class="heatmap">${heatmap}</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+        <div style="width:10px;height:10px;border-radius:2px;background:var(--sur);border:1px solid var(--bor)"></div>
+        <span style="font-size:10px;color:var(--mut)">Miss</span>
+        <div style="width:10px;height:10px;border-radius:2px;background:var(--grn);margin-left:8px"></div>
+        <span style="font-size:10px;color:var(--mut)">Done</span>
+      </div>
+    </div>
+    <button class="hd-del" onclick="deleteHabit(${h.id})">🗑 Ye Habit Delete Karo</button>
+  `;
+  document.getElementById('hdOvr').classList.add('on');
+}
+function closeHD(e){if(e.target.id==='hdOvr')document.getElementById('hdOvr').classList.remove('on')}
+function deleteHabit(id){
+  if(!confirm('Habit delete karna hai?'))return;
+  S.habits=S.habits.filter(h=>h.id!==id);
+  save();renderHabits();renderHabitScore();renderRealityScore();
+  document.getElementById('hdOvr').classList.remove('on');
+  toast('Habit deleted');
+}
+
+// ===== THOUGHT TRACKER =====
+let curThTag='random';
+function selTag(b){
+  document.querySelectorAll('.th-tag').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); curThTag=b.dataset.t;
+}
+function saveThought(){
+  const inp=document.getElementById('thInp');
+  const text=inp.value.trim();
+  if(!text)return;
+  S.thoughts.unshift({id:Date.now(),text,tag:curThTag,time:new Date().toISOString()});
+  save(); inp.value='';
+  renderThoughts(); renderThInsight(); toast('Thought saved! 💭');
+}
+function delThought(id){
+  S.thoughts=S.thoughts.filter(t=>t.id!==id);
+  save(); renderThoughts(); renderThInsight();
+}
+function renderThInsight(){
+  const el=document.getElementById('thInsight');
+  if(!el)return;
+  const today=lDS(new Date());
+  const todayTh=S.thoughts.filter(t=>lDS(new Date(t.time))===today);
+  if(!todayTh.length){el.innerHTML='';return}
+  const counts={};
+  todayTh.forEach(t=>{counts[t.tag]=(counts[t.tag]||0)+1});
+  const top=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+  const pct=Math.round((top[1]/todayTh.length)*100);
+  const tagEmoji={distraction:'😵',focus:'🎯',anxiety:'😰',random:'💭'};
+  el.innerHTML=`<div class="th-insight">${tagEmoji[top[0]]||'💭'} Aaj ke ${pct}% thoughts "${top[0]}" wale hain</div>`;
+}
+function renderThoughts(){
+  const list=document.getElementById('thList');
+  if(!list)return;
+  if(!S.thoughts.length){list.innerHTML='<div class="empty"><div class="ei">💭</div>Koi thought nahi<br>Upar likho kya chal raha hai...</div>';return}
+  const grouped={};
+  S.thoughts.forEach(t=>{
+    const d=new Date(t.time).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+    if(!grouped[d])grouped[d]=[];
+    grouped[d].push(t);
+  });
+  let html='';
+  Object.entries(grouped).forEach(([date,items])=>{
+    html+=`<div class="dsep">${date}</div>`;
+    items.forEach(t=>{
+      const tm=new Date(t.time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+      html+=`<div class="th-item">
+        <button class="th-del" onclick="delThought(${t.id})">🗑</button>
+        <div class="th-time">${tm}</div>
+        <div class="th-text">${t.text}</div>
+        <span class="th-badge ${t.tag}">${t.tag}</span>
+      </div>`;
+    });
+  });
+  list.innerHTML=html;
+}
+
+// ===== INACTIVITY DETECTOR =====
+let lastActivityTime=Date.now();
+let inactivityTimer=null;
+function resetInactivity(){lastActivityTime=Date.now()}
+function startInactivityDetector(){
+  document.addEventListener('click',resetInactivity);
+  document.addEventListener('keydown',resetInactivity);
+  inactivityTimer=setInterval(()=>{
+    const idle=(Date.now()-lastActivityTime)/1000/60;
+    if(idle>=120) toast('😴 Kya kar raha hai? Time waste ho raha hai!');
+  },5*60*1000); // check every 5 min
 }
 
 // ===== TOAST =====
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2500)}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2500)}
 
 // ===== INPUTS =====
