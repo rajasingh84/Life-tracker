@@ -819,19 +819,21 @@ async function addFood(){
   let parsed=null;
   if(S.apiKey){
     try{
-      const prompt=`You are a nutrition expert. Analyze this food/supplement entry and return ONLY valid JSON.
+      const prompt=`You are a nutrition expert. Return ONLY valid JSON, no explanation.
 
-Entry: "${text}"
+Food entry: "${text}"
 
-Identify:
-1. Is this a MEAL/FOOD (actual food or drink) → type = "meal"
-2. Is this a SUPPLEMENT (pill, tablet, capsule, powder, nootropic, vitamin, mineral, pre-workout, protein powder, creatine, etc) → type = "supplement"
+CRITICAL RULES:
+1. Calculate for the TOTAL QUANTITY mentioned — NOT per unit. Examples:
+   - "3 egg" → calories for ALL 3 eggs combined (3×70=210 kcal, 3×6=18g protein)
+   - "2 roti" → calories for BOTH rotis combined
+   - "100g chicken" → calories for 100g total
+   - "1 scoop whey" → calories for 1 scoop
+2. MEAL = actual food/drink. SUPPLEMENT = pill/tablet/capsule/powder/nootropic/vitamin/mineral/creatine (not protein powder)
+3. Supplement pills/tablets → calories = 0
 
-Calculate accurate macros based on standard nutritional databases.
-For supplements that are pills/capsules/tablets (not protein powder) → calories ≈ 0.
-
-Return JSON:
-{"type":"meal or supplement","name":"proper name","calories":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"notes":"serving info"}`;
+Return JSON (all numbers are TOTALS for the full entry):
+{"type":"meal or supplement","name":"clean name","calories":total_number,"protein":total_grams,"carbs":total_grams,"fat":total_grams,"fiber":total_grams,"notes":"e.g. 3 eggs total"}`;
       const raw=await callAI(prompt,300,true);
       if(raw){
         const m=raw.match(/\{[\s\S]*\}/);
@@ -910,7 +912,7 @@ function renderExp(){
 }
 
 // ===== MISTAKES =====
-function addMist(){const inp=document.getElementById('mta');const t=inp.value.trim();if(!t)return;S.mistakes.unshift({id:Date.now(),text:t,time:new Date().toISOString()});save();inp.value='';renderMist();renderRealityScore();toast('Mistake record! 📝')}
+function addMist(){const inp=document.getElementById('mta');const t=inp.value.trim();if(!t)return;S.mistakes.unshift({id:Date.now(),text:t,time:new Date().toISOString()});save();inp.value='';renderMist();toast('Mistake record! 📝')}
 function delMist(id){S.mistakes=S.mistakes.filter(m=>m.id!==id);save();renderMist()}
 function renderMist(){
   const l=document.getElementById('mlist');
@@ -1030,68 +1032,18 @@ function initCharts(){
 
 // ===== DOWNLOAD =====
 function dlCSV(){
-  const q=s=>`"${String(s||'').replace(/"/g,'""')}"`;
-  const dt=d=>new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-  const tm=d=>new Date(d).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
-  const sep='\n\n';
-
-  let csv=`LIFE TRACKER EXPORT\nDate: ${new Date().toLocaleString('en-IN')}\nUser: ${S.userName||'Unknown'}\n`;
-
-  // SECTION 1: ACTIVITIES
-  csv+=`${sep}=== SECTION 1: ACTIVITIES ===\nType,Date,Time,Name,Duration,Mood\n`;
-  const acts=S.logs.filter(l=>l.type==='activity');
-  acts.length?acts.forEach(l=>csv+=`Activity,${dt(l.startTime)},${tm(l.startTime)},${q(l.display)},${q(l.duration)},${l.mood||''}\n`):csv+=`(none)\n`;
-  const notes=S.logs.filter(l=>l.type==='note');
-  if(notes.length){csv+=`\nDate,Time,Note\n`;notes.forEach(l=>csv+=`${dt(l.time||l.startTime)},${tm(l.time||l.startTime)},${q(l.text||l.display)}\n`);}
-
-  // SECTION 2: EXPENSES
-  csv+=`${sep}=== SECTION 2: EXPENSES ===\n`;
-  if(S.expenses?.length){
-    csv+=`Total: ₹${S.expenses.reduce((s,e)=>s+e.amount,0)}\n\nDate,Time,Amount,Category,Description\n`;
-    S.expenses.forEach(e=>csv+=`${dt(e.time)},${tm(e.time)},₹${e.amount},${q(e.category)},${q(e.text)}\n`);
-  }else csv+=`(none)\n`;
-
-  // SECTION 3: FOOD
-  csv+=`${sep}=== SECTION 3: FOOD & NUTRITION ===\n`;
-  if(S.foods?.length){
-    csv+=`Total Cal: ${S.foods.reduce((s,f)=>s+f.calories,0)} kcal | Protein: ${S.foods.reduce((s,f)=>s+f.protein,0)}g\n\nType,Date,Time,Name,Calories,Protein,Carbs,Fat,Fiber\n`;
-    S.foods.forEach(f=>csv+=`${f.type},${dt(f.time)},${tm(f.time)},${q(f.name)},${f.calories},${f.protein},${f.carbs},${f.fat||0},${f.fiber||0}\n`);
-  }else csv+=`(none)\n`;
-
-  // SECTION 4: HABITS
-  csv+=`${sep}=== SECTION 4: HABITS ===\nHabit,Emoji,Since,Days Done,Streak,Completion%\n`;
-  if(S.habits?.length){
-    S.habits.forEach(h=>{
-      const done=Object.values(h.logs||{}).filter(v=>v).length;
-      csv+=`${q(h.name)},${h.emoji},${dt(h.createdAt)},${done},${habitStreak(h)},${habitCompletion(h)}%\n`;
-    });
-    csv+=`\nDate,Habit,Level\n`;
-    S.habits.forEach(h=>Object.entries(h.logs||{}).sort().forEach(([date,v])=>{
-      const lbl=v===true||v===2?'Done':v===1?'Partial':'';
-      if(lbl) csv+=`${date},${q(h.name)},${lbl}\n`;
-    }));
-  }else csv+=`(none)\n`;
-
-  // SECTION 5: MISTAKES
-  csv+=`${sep}=== SECTION 5: MISTAKES ===\nDate,Time,Mistake\n`;
-  S.mistakes?.length?S.mistakes.forEach(m=>csv+=`${dt(m.time)},${tm(m.time)},${q(m.text)}\n`):csv+=`(none)\n`;
-
-  // SECTION 6: THOUGHTS
-  csv+=`${sep}=== SECTION 6: THOUGHTS ===\n`;
-  if(S.thoughts?.length){
-    const tc={};S.thoughts.forEach(t=>{tc[t.tag]=(tc[t.tag]||0)+1});
-    csv+=`Tags: ${Object.entries(tc).map(([k,v])=>`${k}:${v}`).join(', ')}\n\nDate,Time,Tag,Thought\n`;
-    S.thoughts.forEach(t=>csv+=`${dt(t.time)},${tm(t.time)},${t.tag},${q(t.text)}\n`);
-  }else csv+=`(none)\n`;
-
-  // SECTION 7: TASKS
-  csv+=`${sep}=== SECTION 7: TASKS ===\nStatus,Added,Done Date,Task\n`;
-  S.tasks?.length?S.tasks.forEach(t=>csv+=`${t.done?'Done':'Pending'},${dt(t.createdAt)},${t.doneAt?dt(t.doneAt):''},${q(t.text)}\n`):csv+=`(none)\n`;
-
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
-  a.download=`life-full-${lDS(new Date())}.csv`;a.click();
-  toast('Full CSV download! ✅');
+  let csv='Type,Date,Time,Name,Duration,Amount,Category,Mood\n';
+  S.logs.forEach(l=>{
+    if(l.type==='activity'){const d=new Date(l.startTime);csv+=`Activity,${d.toLocaleDateString('en-IN')},${d.toLocaleTimeString('en-IN')},"${l.display}","${l.duration}",,,${l.mood||''}\n`}
+    else if(l.type==='expense'){const d=new Date(l.time);csv+=`Expense,${d.toLocaleDateString('en-IN')},${d.toLocaleTimeString('en-IN')},,,"${l.amount}","${l.category}",${l.mood||''}\n`}
+    else{const d=new Date(l.time||l.startTime);csv+=`Note,${d.toLocaleDateString('en-IN')},${d.toLocaleTimeString('en-IN')},"${(l.text||l.display||'').replace(/"/g,'""')}",,,\n`}
+  });
+  if(S.foods.length){
+    csv+='\n\nFOOD LOG\nType,Date,Time,Name,Calories,Protein,Carbs,Fat,Fiber,Raw\n';
+    S.foods.forEach(f=>{const d=new Date(f.time);csv+=`${f.type},${d.toLocaleDateString('en-IN')},${d.toLocaleTimeString('en-IN')},"${f.name}",${f.calories},${f.protein},${f.carbs},${f.fat||0},${f.fiber||0},"${f.raw.replace(/"/g,'""')}"\n`});
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`life-${lDS(new Date())}.csv`;a.click();
+  toast('CSV download! ✅');
 }
 
 // ===== SETTINGS =====
@@ -1259,11 +1211,8 @@ function toggleHabit(id){
   const h=S.habits.find(x=>x.id===id);
   if(!h)return;
   const today=lDS(new Date());
-  if(h.logs[today]===true) h.logs[today]=2; // migration
-  const cur=h.logs[today]||0;
-  if(cur===0) h.logs[today]=1;
-  else if(cur===1) h.logs[today]=2;
-  else delete h.logs[today]; // 2→0 reset
+  if(h.logs[today]) delete h.logs[today];
+  else h.logs[today]=true;
   save();renderHabits();renderHabitScore();renderRealityScore();
 }
 
@@ -1347,11 +1296,11 @@ function openHabitDetail(id){
   const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DLBLS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  // Start from 52 weeks ago, aligned to Sunday
+  // endDate = today, startDate = 52 weeks back aligned to Sunday
   const endDate=new Date(); endDate.setHours(23,59,59,999);
   const startDate=new Date(endDate.getTime()-364*86400000);
-  // Roll back to nearest Sunday
-  startDate.setDate(startDate.getDate()-startDate.getDay());
+  startDate.setDate(startDate.getDate()-startDate.getDay()); // roll to Sunday
+  startDate.setHours(0,0,0,0);
 
   // Build week columns
   const weeks=[];
@@ -1360,7 +1309,7 @@ function openHabitDetail(id){
     const week=[];
     for(let d=0;d<7;d++){
       const ds=lDS(cur);
-      const inRange=cur<=endDate;
+      const inRange=cur.getTime()<=endDate.getTime();
       const v=inRange?(h.logs&&h.logs[ds]):null;
       const lvl=v===true||v===2?'l2':v===1?'l1':'';
       week.push(inRange?{ds,lvl,isToday:ds===today,month:cur.getMonth(),day:cur.getDate(),dayName:DLBLS[d]}:null);
@@ -1369,21 +1318,21 @@ function openHabitDetail(id){
     weeks.push(week);
   }
 
-  // Month label row — only show month name when it changes
-  let mRow='<div style="display:flex;padding-left:28px;margin-bottom:3px">';
-  let lastM=-1;
+  // Month labels — appear at the column where the 1st of that month falls
+  const CELL=13; // 12px + 1px gap
+  const YAXIS=27; // Y-axis width
+  let mRow=`<div style="display:flex;padding-left:${YAXIS}px;margin-bottom:3px">`;
   weeks.forEach(wk=>{
-    const first=wk.find(c=>c);
-    const m=first?first.month:-1;
-    mRow+=`<div style="width:13px;flex-shrink:0;font-size:8px;color:var(--mut);font-family:'DM Mono',monospace">${m!==lastM&&m>=0?MONTHS[m]:''}</div>`;
-    if(m>=0) lastM=m;
+    // Show month name if this week contains the 1st of any month
+    const newMonth=wk.find(c=>c&&c.day===1);
+    mRow+=`<div style="width:${CELL}px;flex-shrink:0;font-size:8px;color:var(--mut);font-family:'DM Mono',monospace;overflow:hidden">${newMonth?MONTHS[newMonth.month]:''}</div>`;
   });
   mRow+='</div>';
 
   // Grid
-  let grid='<div style="display:flex;gap:1px">';
-  // Y-axis: Mon Wed Fri labels
-  grid+='<div style="display:flex;flex-direction:column;gap:1px;margin-right:3px;width:24px">';
+  let grid='<div style="display:flex;gap:0">';
+  // Y-axis labels
+  grid+=`<div style="display:flex;flex-direction:column;gap:1px;margin-right:3px;width:24px">`;
   ['','M','','W','','F',''].forEach(l=>{
     grid+=`<div style="height:12px;font-size:8px;color:var(--mut);font-family:'DM Mono',monospace;text-align:right;line-height:12px">${l}</div>`;
   });
@@ -1391,11 +1340,11 @@ function openHabitDetail(id){
 
   // Week columns
   weeks.forEach(wk=>{
-    grid+='<div style="display:flex;flex-direction:column;gap:1px">';
+    grid+=`<div style="display:flex;flex-direction:column;gap:1px;margin-right:1px">`;
     wk.forEach(c=>{
       if(c){
-        const title=`${c.dayName}, ${MONTHS[c.month]} ${c.day}${c.lvl==='l2'?' ✓':c.lvl==='l1'?' ~':''}`;
-        grid+=`<div class="hm-cell ${c.lvl} ${c.isToday?'today':''}" title="${title}"></div>`;
+        const title=`${c.dayName} ${c.day} ${MONTHS[c.month]}${c.lvl==='l2'?' ✓':c.lvl==='l1'?' ~':''}`;
+        grid+=`<div class="hm-cell ${c.lvl} ${c.isToday?'today':''}" title="${title}" style="width:12px;height:12px"></div>`;
       } else {
         grid+=`<div style="width:12px;height:12px"></div>`;
       }
@@ -1452,7 +1401,7 @@ function saveThought(){
   if(!text)return;
   S.thoughts.unshift({id:Date.now(),text,tag:curThTag,time:new Date().toISOString()});
   save(); inp.value='';
-  renderThoughts(); renderThInsight(); renderRealityScore(); toast('Thought saved! 💭');
+  renderThoughts(); renderThInsight(); toast('Thought saved! 💭');
 }
 function delThought(id){
   S.thoughts=S.thoughts.filter(t=>t.id!==id);
