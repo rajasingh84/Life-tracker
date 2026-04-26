@@ -25,8 +25,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 .hdr-title span{color:var(--mut);font-weight:400;font-size:12px;margin-left:5px}
 .gear{width:34px;height:34px;background:var(--sur);border:1px solid var(--bor);border-radius:10px;color:var(--mut);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
-.tabs{position:fixed;bottom:0;left:0;right:0;height:var(--BH);background:var(--bg2);border-top:1px solid var(--bor);display:grid;grid-template-columns:repeat(6,1fr);z-index:100}
-.tb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;color:var(--mut);cursor:pointer;font-family:'Syne',sans-serif;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;position:relative;transition:color 0.2s}
+.tabs{position:fixed;bottom:0;left:0;right:0;height:var(--BH);background:var(--bg2);border-top:1px solid var(--bor);display:flex;overflow-x:auto;scrollbar-width:none;z-index:100}
+.tabs::-webkit-scrollbar{display:none}
+.tb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;color:var(--mut);cursor:pointer;font-family:'Syne',sans-serif;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;position:relative;transition:color 0.2s;flex:0 0 calc(100%/7);min-width:48px}
 .tb.on{color:var(--acc)}
 .tb .ic{font-size:17px}
 .tb::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:var(--acc);border-radius:2px 2px 0 0;opacity:0;transition:opacity 0.2s}
@@ -267,6 +268,34 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--bor);border-radius:3px}
+
+/* REWARD PAGE */
+.rw-bal{margin:12px;border-radius:var(--R);padding:20px;text-align:center;border:2px solid}
+.rw-bal.pos{background:rgba(90,154,106,0.1);border-color:rgba(90,154,106,0.4)}
+.rw-bal.neg{background:rgba(192,57,43,0.1);border-color:rgba(192,57,43,0.4);animation:rw-pulse 2s infinite}
+@keyframes rw-pulse{0%,100%{border-color:rgba(192,57,43,0.4)}50%{border-color:rgba(192,57,43,0.9)}}
+.rw-bal-num{font-family:'Syne',sans-serif;font-size:48px;font-weight:800}
+.rw-bal.pos .rw-bal-num{color:var(--grn)}
+.rw-bal.neg .rw-bal-num{color:var(--red)}
+.rw-bal-lbl{font-size:11px;font-family:'Syne',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+.rw-bal.pos .rw-bal-lbl{color:var(--grn)}
+.rw-bal.neg .rw-bal-lbl{color:var(--red)}
+.rw-today{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 12px 12px}
+.rw-today-card{background:var(--bg2);border:1px solid var(--bor);border-radius:var(--R);padding:12px;text-align:center}
+.rw-today-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:800}
+.rw-today-val.earn{color:var(--grn)}
+.rw-today-val.spend{color:var(--red)}
+.rw-today-lbl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:0.5px;margin-top:3px}
+.rw-tx{background:var(--bg2);border:1px solid var(--bor);border-radius:var(--R);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.rw-tx-left{flex:1;min-width:0}
+.rw-tx-desc{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rw-tx-time{font-size:10px;color:var(--mut);margin-top:2px}
+.rw-tx-pts{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;flex-shrink:0;margin-left:12px}
+.rw-tx-pts.pos{color:var(--grn)}
+.rw-tx-pts.neg{color:var(--red)}
+.rw-rule{background:var(--sur);border-radius:var(--R);padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.rw-rule-name{font-size:12px;color:var(--txt)}
+.rw-rule-pts{font-size:12px;font-family:'Syne',sans-serif;font-weight:700}
 </style>
 </head>
 <body>
@@ -433,6 +462,18 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
   </div>
 </div>
 
+<!-- REWARD PAGE -->
+<div class="pg" id="pg-reward">
+  <div id="rw-bal-card"></div>
+  <div class="rw-today" id="rw-today"></div>
+  <div class="sec">AAJ KI TRANSACTIONS</div>
+  <div style="padding:0 12px 8px" id="rw-today-tx"></div>
+  <div class="sec">PURI HISTORY</div>
+  <div style="padding:0 12px 12px" id="rw-all-tx"></div>
+  <div class="sec">REWARD RULES</div>
+  <div style="padding:0 12px 80px" id="rw-rules"></div>
+</div>
+
 <!-- TABS -->
 <div class="tabs">
   <button class="tb on" onclick="goTab('log',this)"><span class="ic">📝</span>LOG</button>
@@ -441,6 +482,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
   <button class="tb" onclick="goTab('expense',this)"><span class="ic">💸</span>EXPENSE</button>
   <button class="tb" onclick="goTab('mistake',this)"><span class="ic">❌</span>MISTAKE</button>
   <button class="tb" onclick="goTab('analysis',this)"><span class="ic">📊</span>ANALYSIS</button>
+  <button class="tb" onclick="goTab('reward',this)"><span class="ic">🎯</span>REWARD</button>
 </div>
 
 <!-- HABIT DETAIL MODAL -->
@@ -481,7 +523,8 @@ let S={
   logs:[],running:null,expenses:[],mistakes:[],foods:[],
   habits:[],thoughts:[],tasks:[],
   shortcuts:['chai ☕','gym 💪','study 📚','trading 📈','walk 🚶','sleep 😴'],
-  apiKey:'',userName:'',calorieGoal:2000
+  apiKey:'',userName:'',calorieGoal:2000,
+  aiCache:{realityMsg:{date:'',key:'',text:''},thoughtInsight:{date:'',count:-1,text:''},weeklyMsg:{date:'',text:''}}
 };
 let curMood='';
 let dayDate=new Date(); dayDate.setHours(0,0,0,0);
@@ -514,6 +557,7 @@ function goTab(n,b){
   if(n==='food') renderFood();
   if(n==='expense') renderExp();
   if(n==='analysis') initCharts();
+  if(n==='reward') renderReward();
 }
 
 // ===== PANEL OVERLAYS (Task, Habit, Thought) =====
@@ -1039,6 +1083,10 @@ function renderWeeklyReport(){
 async function aiWeeklyMsg(productive,wasted,dayData){
   const el=document.getElementById('weeklyAiMsg');
   if(!el)return;
+  const today=lDS(new Date());
+  if(!S.aiCache) S.aiCache={realityMsg:{date:'',key:'',text:''},thoughtInsight:{date:'',count:-1,text:''},weeklyMsg:{date:'',text:''}};
+  const c=S.aiCache.weeklyMsg;
+  if(c.date===today&&c.text){el.textContent=c.text;return;}
   try{
     const summary=dayData.map(d=>`${d.date}: ${d.actCount} activities, ${d.habitsDone} habits done, ${d.mistakes} mistakes, ₹${d.expense} spent`).join('\n');
     const prompt=`Weekly life data:
@@ -1047,7 +1095,12 @@ Productive: ${productive}/7 days
 
 Give ONE sharp honest weekly analysis in Hinglish (max 20 words). Be specific about patterns. Example: "Monday strong, baaki sab average — weekend pe kuch nahi kiya."`;
     const raw=await callAI(prompt,100);
-    if(raw&&el) el.textContent=raw.replace(/"/g,'');
+    if(raw&&el){
+      const text=raw.replace(/"/g,'');
+      el.textContent=text;
+      S.aiCache.weeklyMsg={date:today,text};
+      save();
+    }
   }catch(e){if(el)el.textContent=productive>=5?'🔥 Solid week!':productive>=3?'😐 Average week — improve karo':'❌ Weak week — pattern badlo';}
 }
 
@@ -1215,8 +1268,12 @@ function renderRealityScore(){
 async function aiRealityMsg(score,max,pct,done,partial,mistakes,distractions){
   const el=document.getElementById('rsAiMsg');
   if(!el)return;
+  const today=lDS(new Date());
+  const cacheKey=`${score}_${max}_${mistakes}_${distractions}`;
+  if(!S.aiCache) S.aiCache={realityMsg:{date:'',key:'',text:''},thoughtInsight:{date:'',count:-1,text:''},weeklyMsg:{date:'',text:''}};
+  const c=S.aiCache.realityMsg;
+  if(c.date===today&&c.key===cacheKey&&c.text){el.textContent=c.text;return;}
   try{
-    const today=lDS(new Date());
     const habitNames=S.habits.map(h=>{
       const v=h.logs&&h.logs[today];
       const lvl=v===true||v===2?'done':v===1?'partial':'missed';
@@ -1230,7 +1287,12 @@ Distraction thoughts: ${distractions}
 
 Give ONE short brutally honest message in Hinglish (max 12 words). Be specific, not generic. Examples: "Gym miss kiya phir — yahi pattern toot-ta hai" or "Strong day — consistency banao".`;
     const raw=await callAI(prompt,60);
-    if(raw&&el) el.textContent=raw.replace(/"/g,'');
+    if(raw&&el){
+      const text=raw.replace(/"/g,'');
+      el.textContent=text;
+      S.aiCache.realityMsg={date:today,key:cacheKey,text};
+      save();
+    }
   }catch(e){if(el)el.textContent=pct>=80?'🔥 Control mein hai':pct>=50?'⚠️ Improve kar':'❌ Loss kar raha hai';}
 }
 
@@ -1466,6 +1528,10 @@ function renderThInsight(){
 async function aiThoughtInsight(thoughts){
   const el=document.getElementById('thInsightTxt');
   if(!el)return;
+  const today=lDS(new Date());
+  if(!S.aiCache) S.aiCache={realityMsg:{date:'',key:'',text:''},thoughtInsight:{date:'',count:-1,text:''},weeklyMsg:{date:'',text:''}};
+  const c=S.aiCache.thoughtInsight;
+  if(c.date===today&&c.count===thoughts.length&&c.text){el.textContent=c.text;return;}
   try{
     const summary=thoughts.map(t=>`[${t.tag}] ${t.text}`).join('\n');
     const prompt=`Today's thoughts from a person:
@@ -1473,7 +1539,12 @@ ${summary}
 
 Give ONE sharp insight in Hinglish (max 15 words). Be specific about patterns you see. Example: "Focus thoughts kam hain — distraction ka pattern clear hai, kab tak?"`;
     const raw=await callAI(prompt,80);
-    if(raw&&el) el.textContent=raw.replace(/"/g,'');
+    if(raw&&el){
+      const text=raw.replace(/"/g,'');
+      el.textContent=text;
+      S.aiCache.thoughtInsight={date:today,count:thoughts.length,text};
+      save();
+    }
   }catch(e){}
 }
 function renderThoughts(){
@@ -1515,8 +1586,218 @@ function startInactivityDetector(){
   },5*60*1000); // check every 5 min
 }
 
-// ===== TOAST =====
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2500)}
+// ===== REWARD SYSTEM =====
+function calcLogPoints(log){
+  const raw=(log.rawText||log.activity||log.display||'').toLowerCase();
+  const act=(log.activity||log.display||'').toLowerCase();
+
+  // Negatives — check first
+  if(/cigarette|cigaret|cig\b|smoking|smoke/.test(raw)) return{pts:-30,desc:'🚬 Cigarette',type:'spend'};
+  if(/\b(alcohol|beer|wine|whiskey|rum|vodka|daaru|daru|drink kiya|peena)\b/.test(raw)) return{pts:-200,desc:'🍺 Alcohol',type:'spend'};
+  if(/\bporn\b|masterbat|masturbat/.test(raw)) return{pts:-20,desc:'❌ Porn/MB',type:'spend'};
+
+  // Only activity type logs earn positive points
+  if(log.type!=='activity') return null;
+
+  // Parse duration to hours
+  let hrs=0.5;
+  if(log.duration){
+    const hm=log.duration.match(/(\d+)h/);
+    const mm=log.duration.match(/(\d+)m/);
+    hrs=(hm?parseInt(hm[1]):0)+(mm?parseInt(mm[1])/60:0);
+    if(hrs<0.1) hrs=0.25;
+  }
+
+  if(/study|padhai|padh|studying|revision|neet|physics|chemistry|biology|reading|padhna/.test(raw)||/study|padhai/.test(act))
+    return{pts:Math.round(10*Math.min(hrs,4)),desc:'📚 Padhai ('+log.duration+')',type:'earn'};
+  if(/\bgym\b|workout|exercise|weight|lifting|training/.test(raw)||/gym|workout/.test(act))
+    return{pts:Math.round(15*Math.min(hrs,2)),desc:'💪 Gym ('+log.duration+')',type:'earn'};
+  if(/\bwalk\b|walking|jogging|run\b|running/.test(raw)||/walk|run/.test(act))
+    return{pts:Math.round(5*Math.min(hrs*2,3)),desc:'🚶 Walk/Run ('+log.duration+')',type:'earn'};
+  if(/meditat|vipassana|breathwork|pranayam/.test(raw))
+    return{pts:8,desc:'🧘 Meditation',type:'earn'};
+  if(/na bola|resist|refused|no kaha|na keh|na kar/.test(raw))
+    return{pts:2,desc:'✊ Na Bola',type:'earn'};
+  if(/sleep|so gaya|sona|neend/.test(raw)&&hrs>=6)
+    return{pts:5,desc:'😴 Sleep ('+log.duration+')',type:'earn'};
+
+  return null;
+}
+
+function calcFoodPoints(food){
+  const raw=(food.raw||food.name||'').toLowerCase();
+
+  if(/alcohol|beer|wine|whiskey|rum|vodka|daaru|daru/.test(raw))
+    return{pts:-200,desc:'🍺 Alcohol',type:'spend'};
+
+  if(food.type==='supplement') return null;
+
+  // Heavy junk
+  if(/pizza|burger|mcdonalds|kfc|dominos|fried chicken|french fries|nuggets/.test(raw))
+    return{pts:-18,desc:'🍔 Heavy Junk ('+food.name+')',type:'spend'};
+
+  // Medium junk
+  if(/samosa|chips|cold drink|soda|pepsi|coke|coca.cola|maggi|instant noodle|pakora|jalebi|gulab jamun/.test(raw))
+    return{pts:-8,desc:'🍟 Junk ('+food.name+')',type:'spend'};
+
+  // Light junk
+  if(/biscuit|candy|toffee|chocolate(?!.*dark)|lays|kurkure/.test(raw))
+    return{pts:-3,desc:'🍪 Light Junk ('+food.name+')',type:'spend'};
+
+  // Healthy
+  if(/\begg\b|daal|dal\b|sabzi|salad|fruit|oats|oatmeal|milk|curd|yogurt|paneer|sprout|broccoli|spinach|palak|banana|apple|orange/.test(raw))
+    return{pts:3,desc:'🥗 Healthy ('+food.name+')',type:'earn'};
+
+  return null;
+}
+
+function calcHabitPoints(habit, val){
+  const name=(habit.name||'').toLowerCase();
+  const emoji=habit.emoji||'';
+  const done=val===true||val===2;
+  const partial=val===1;
+  const mult=partial?0.5:1;
+
+  if(/gym|workout|exercise/.test(name)||emoji==='💪')
+    return{pts:Math.round(15*mult),desc:emoji+' '+habit.name+(partial?' (partial)':''),type:'earn'};
+  if(/walk|run/.test(name)||emoji==='🚶')
+    return{pts:Math.round(5*mult),desc:emoji+' '+habit.name+(partial?' (partial)':''),type:'earn'};
+  if(/study|padhai|reading/.test(name)||emoji==='📚')
+    return{pts:Math.round(8*mult),desc:emoji+' '+habit.name+(partial?' (partial)':''),type:'earn'};
+  if(done)
+    return{pts:3,desc:emoji+' '+habit.name,type:'earn'};
+  return null;
+}
+
+function computeAllRewardTx(){
+  const txs=[];
+
+  // From activity logs
+  S.logs.forEach(l=>{
+    const r=calcLogPoints(l);
+    if(r) txs.push({time:l.startTime||l.time||new Date().toISOString(),pts:r.pts,desc:r.desc,type:r.type,src:'log',id:l.id});
+  });
+
+  // From foods
+  S.foods.forEach(f=>{
+    const r=calcFoodPoints(f);
+    if(r) txs.push({time:f.time,pts:r.pts,desc:r.desc,type:r.type,src:'food',id:f.id});
+  });
+
+  // From habits
+  S.habits.forEach(h=>{
+    Object.entries(h.logs||{}).forEach(([date,val])=>{
+      if(val===true||val===1||val===2){
+        const r=calcHabitPoints(h,val);
+        if(r) txs.push({time:date+'T08:00:00',pts:r.pts,desc:r.desc,type:r.type,src:'habit',id:h.id+'_'+date});
+      }
+    });
+  });
+
+  txs.sort((a,b)=>new Date(a.time)-new Date(b.time));
+
+  // Compute running balance
+  let bal=0;
+  txs.forEach(tx=>{bal+=tx.pts;tx.balance=bal;});
+
+  return txs;
+}
+
+function renderReward(){
+  const txs=computeAllRewardTx();
+  const balance=txs.length?txs[txs.length-1].balance:0;
+  const today=lDS(new Date());
+  const todayTxs=txs.filter(t=>lDS(new Date(t.time))===today);
+  const todayEarn=todayTxs.filter(t=>t.pts>0).reduce((s,t)=>s+t.pts,0);
+  const todaySpend=todayTxs.filter(t=>t.pts<0).reduce((s,t)=>s+t.pts,0);
+
+  // Balance card
+  const balCard=document.getElementById('rw-bal-card');
+  const isPos=balance>=0;
+  balCard.innerHTML=`<div class="rw-bal ${isPos?'pos':'neg'}">
+    <div class="rw-bal-num">${isPos?'+':''}${balance}</div>
+    <div class="rw-bal-lbl">${isPos?'✅ Brain Points Balance':'⚠️ LOAN — Kama ke wapas lao'}</div>
+    ${!isPos?`<div style="font-size:11px;color:var(--red);margin-top:6px">Abhi tak ${Math.abs(balance)} pts ka loan — no reward milega</div>`:''}
+  </div>`;
+
+  // Today summary
+  document.getElementById('rw-today').innerHTML=`
+    <div class="rw-today-card">
+      <div class="rw-today-val earn">+${todayEarn}</div>
+      <div class="rw-today-lbl">Aaj Kamaya</div>
+    </div>
+    <div class="rw-today-card">
+      <div class="rw-today-val spend">${todaySpend}</div>
+      <div class="rw-today-lbl">Aaj Khaya</div>
+    </div>`;
+
+  // Today transactions
+  const todayTxEl=document.getElementById('rw-today-tx');
+  if(!todayTxs.length){
+    todayTxEl.innerHTML='<div class="empty" style="padding:20px"><div class="ei">🎯</div>Aaj ka koi data nahi yet<br>Log karo — points aayenge</div>';
+  } else {
+    todayTxEl.innerHTML=[...todayTxs].reverse().map(tx=>{
+      const t=new Date(tx.time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+      const isPos=tx.pts>0;
+      return`<div class="rw-tx">
+        <div class="rw-tx-left">
+          <div class="rw-tx-desc">${tx.desc}</div>
+          <div class="rw-tx-time">${t} · Balance: ${tx.balance>0?'+':''}${tx.balance}</div>
+        </div>
+        <div class="rw-tx-pts ${isPos?'pos':'neg'}">${isPos?'+':''}${tx.pts}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // All history (last 30 transactions, reversed)
+  const allTxEl=document.getElementById('rw-all-tx');
+  const recent=[...txs].reverse().slice(0,30);
+  if(!recent.length){
+    allTxEl.innerHTML='<div style="text-align:center;padding:16px;color:var(--mut);font-size:12px">Koi history nahi abhi</div>';
+  } else {
+    allTxEl.innerHTML=recent.map(tx=>{
+      const d=new Date(tx.time);
+      const dt=d.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+      const t=d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+      const isPos=tx.pts>0;
+      return`<div class="rw-tx">
+        <div class="rw-tx-left">
+          <div class="rw-tx-desc">${tx.desc}</div>
+          <div class="rw-tx-time">${dt} ${t}</div>
+        </div>
+        <div class="rw-tx-pts ${isPos?'pos':'neg'}">${isPos?'+':''}${tx.pts}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Rules
+  document.getElementById('rw-rules').innerHTML=`
+    <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--grn);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">EARN ↑</div>
+    ${[
+      ['📚 Padhai 1hr','10 pts'],
+      ['💪 Gym 1hr','15 pts'],
+      ['🚶 Walk 30min','5 pts'],
+      ['🧘 Meditation','8 pts'],
+      ['✊ Na Bola (log karo)','2 pts'],
+      ['😴 Sleep 6hr+','5 pts'],
+      ['✅ Habit done','3-15 pts'],
+      ['🥗 Healthy meal','3 pts'],
+    ].map(([n,p])=>`<div class="rw-rule"><span class="rw-rule-name">${n}</span><span class="rw-rule-pts" style="color:var(--grn)">${p}</span></div>`).join('')}
+    <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:0.5px;margin:12px 0 6px">SPEND ↓</div>
+    ${[
+      ['🍔 Heavy Junk (pizza/burger)','-18 pts'],
+      ['🍟 Medium Junk (samosa/chips)','-8 pts'],
+      ['🍪 Light Junk (biscuit)','-3 pts'],
+      ['🚬 Cigarette','-30 pts'],
+      ['❌ Porn/MB','-20 pts'],
+      ['🍺 Alcohol','-200 pts'],
+    ].map(([n,p])=>`<div class="rw-rule"><span class="rw-rule-name">${n}</span><span class="rw-rule-pts" style="color:var(--red)">${p}</span></div>`).join('')}
+    <div style="font-size:10px;color:var(--mut);padding:10px 0;line-height:1.6">
+      💡 Auto-detect hota hai teri existing logs se. Tera kaam wahi hai — log karna.
+    </div>`;
+}
+
+
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2500)}
 
 // ===== INPUTS =====
