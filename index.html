@@ -1596,6 +1596,12 @@ function calcLogPoints(log){
   if(/\b(alcohol|beer|wine|whiskey|rum|vodka|daaru|daru|drink kiya|peena)\b/.test(raw)) return{pts:-200,desc:'🍺 Alcohol',type:'spend'};
   if(/\bporn\b|masterbat|masturbat/.test(raw)) return{pts:-20,desc:'❌ Porn/MB',type:'spend'};
 
+  // Reels/social media watching — points based on duration
+  if(/reel|instagram|insta\b|youtube|yt\b|scroll|watching phone|watch.*phone/.test(raw)){
+    const cost=Math.round(15*Math.max(hrs,0.25));
+    return{pts:-cost,desc:'📱 Reels/Social ('+log.duration+')',type:'spend'};
+  }
+
   // Only activity type logs earn positive points
   if(log.type!=='activity') return null;
 
@@ -1609,11 +1615,11 @@ function calcLogPoints(log){
   }
 
   if(/study|padhai|padh|studying|revision|neet|physics|chemistry|biology|reading|padhna/.test(raw)||/study|padhai/.test(act))
-    return{pts:Math.round(10*Math.min(hrs,4)),desc:'📚 Padhai ('+log.duration+')',type:'earn'};
+    return{pts:Math.round(10*hrs),desc:'📚 Padhai ('+log.duration+')',type:'earn'};
   if(/\bgym\b|workout|exercise|weight|lifting|training/.test(raw)||/gym|workout/.test(act))
-    return{pts:Math.round(15*Math.min(hrs,2)),desc:'💪 Gym ('+log.duration+')',type:'earn'};
+    return{pts:Math.round(15*hrs),desc:'💪 Gym ('+log.duration+')',type:'earn'};
   if(/\bwalk\b|walking|jogging|run\b|running/.test(raw)||/walk|run/.test(act))
-    return{pts:Math.round(5*Math.min(hrs*2,3)),desc:'🚶 Walk/Run ('+log.duration+')',type:'earn'};
+    return{pts:Math.round(5*hrs*2),desc:'🚶 Walk/Run ('+log.duration+')',type:'earn'};
   if(/meditat|vipassana|breathwork|pranayam/.test(raw))
     return{pts:8,desc:'🧘 Meditation',type:'earn'};
   if(/na bola|resist|refused|no kaha|na keh|na kar/.test(raw))
